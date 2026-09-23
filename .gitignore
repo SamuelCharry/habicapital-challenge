@@ -1,0 +1,34 @@
+# Environment
+.env
+.env.local
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Agent scratch
+.codex/
+*.local.md
+
+# El enunciado del reto es material de HabiCapital. Lo conservo localmente
+# como fuente de verdad, pero no lo redistribuyo en un repo publico.
+reto-tecnico-*.pdf
