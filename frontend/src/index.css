@@ -2,6 +2,9 @@
 * {
   box-sizing: border-box;
 }
+
+
+
 body {
   margin: 0;
   color: var(--color-neutral-900);
@@ -796,7 +799,7 @@ select {
 .skip-link:focus {
   top: 0;
 }
-@media (max-width: 1500px) {
+@media (max-width: 1050px) {
   .header-inner {
     gap: 30px;
     padding: 27px 36px;
@@ -1022,7 +1025,7 @@ select {
   color: var(--dark-text);
   border-color: var(--dark-line);
 }
-@media (max-width: 1500px) {
+@media (max-width: 1050px) {
   .header-inner:has(.session-account) {
     flex-wrap: wrap;
     gap: 30px;
@@ -1268,7 +1271,7 @@ select {
   text-wrap: pretty;
 }
 
-@media (max-width: 1500px) {
+@media (max-width: 1050px) {
   /* En una sola columna el diagrama vuelve arriba: la animación tiene que ser
      lo primero que se ve, igual que en la versión ancha. */
   .credit-top {
@@ -1401,7 +1404,7 @@ select {
   grid-template-columns: minmax(0, 1fr);
 }
 
-@media (max-width: 1500px) {
+@media (max-width: 1050px) {
   .hero {
     grid-template-columns: minmax(0, 1fr);
     padding: var(--space-6);
