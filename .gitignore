@@ -35,3 +35,7 @@ reto-tecnico-*.pdf
 
 # El zip descargado; el .data extraido si se versiona para poder reentrenar.
 backend/data/*.zip
+
+# El logo es activo de marca de HabiCapital. Lo conservo local como referencia
+# para derivar la forma, pero no lo redistribuyo.
+logo.jpg

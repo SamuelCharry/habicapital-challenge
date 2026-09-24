@@ -4,6 +4,7 @@ interface Session {
   accounts: Account[];
   active: Account | null;
   select: (id: string) => void;
+  signOut: () => void;
 }
 const Context = createContext<Session | null>(null);
 export function ActiveAccount({ accounts, children }: { accounts: Account[]; children: ReactNode }) {
@@ -14,7 +15,7 @@ export function ActiveAccount({ accounts, children }: { accounts: Account[]; chi
       return '';
     }
   });
-  const active = accounts.find(account => account.id === selected) || accounts[0] || null;
+  const active = accounts.find(account => account.id === selected) || null;
   function select(id: string) {
     setSelected(id);
     try {
@@ -23,7 +24,15 @@ export function ActiveAccount({ accounts, children }: { accounts: Account[]; chi
       /* Storage is optional. */
     }
   }
-  return <Context.Provider value={{ accounts, active, select }}>{children}</Context.Provider>;
+  function signOut() {
+    setSelected('');
+    try {
+      localStorage.removeItem('habicapital.active-account');
+    } catch {
+      /* Storage is optional. */
+    }
+  }
+  return <Context.Provider value={{ accounts, active, select, signOut }}>{children}</Context.Provider>;
 }
 export function useActiveAccount() {
   const context = useContext(Context);

@@ -48,11 +48,15 @@ sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 NOW = datetime.now(timezone.utc)
 
+# Los tres primeros están por debajo del umbral a propósito, y a distancias
+# distintas: así cada cuenta de la demo tiene una ruta que se ve, y se ven
+# diferentes entre sí. Con los valores anteriores, dos de las cuatro ya
+# calificaban y no tenían nada que mostrar.
 PEOPLE = [
     # handle, nombre, meses de historial, ahorro mensual en pesos
-    ('samuel', 'Samuel Charry', 14, 800_000),
-    ('juan', 'Juan Pérez', 9, 450_000),
-    ('laura', 'Laura Gómez', 6, 1_200_000),
+    ('samuel', 'Samuel Charry', 7, 500_000),    # el más cerca: ruta corta
+    ('juan', 'Juan Pérez', 5, 350_000),         # a media distancia
+    ('laura', 'Laura Gómez', 4, 300_000),       # el más lejos: ruta larga
     # Mariana existe para poder mostrar el estado "sin evidencia suficiente".
     ('mariana', 'Mariana Ríos', 1, 300_000),
 ]

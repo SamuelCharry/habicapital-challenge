@@ -70,7 +70,6 @@ export default function CreateSharedExpense() {
     <>
       <div className="page-heading">
         <div>
-          <p className="eyebrow">UN PLAN EN COMÚN</p>
           <h1>Crear gasto compartido</h1>
           <p>Una sola cuenta, una parte justa para cada persona.</p>
         </div>

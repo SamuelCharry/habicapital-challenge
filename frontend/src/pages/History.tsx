@@ -14,7 +14,6 @@ export default function History() {
     <>
       <div className="page-heading">
         <div>
-          <p className="eyebrow">EL DETALLE DE CADA PAGO</p>
           <h1>Tu historial</h1>
           <p>Todo lo que entra, lo que sale y la historia que lo acompaña.</p>
         </div>

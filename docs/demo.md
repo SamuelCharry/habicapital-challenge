@@ -12,13 +12,26 @@ cd backend
 ../.venv/Scripts/python.exe scripts/seed_demo.py
 ```
 
-El sembrador crea cuatro cuentas con historial de varios meses: Samuel con 14,
-Juan con 9, Laura con 6, y **Mariana con 1 — que existe justamente para mostrar el
-estado de "sin evidencia suficiente"**. Más tres gastos compartidos y pagos
-parciales.
+El sembrador crea cuatro cuentas, y las tres primeras están por debajo del
+umbral a distintas distancias, para que cada una tenga una ruta que se vea y se
+vean distintas entre sí:
 
-Empieza el video con **Juan** activo: es el perfil que está cerca de calificar, o
-sea el que tiene una ruta interesante que mostrar.
+| Cuenta | Historial | Dónde está | Ruta |
+|---|---|---|---|
+| **Samuel** | 7 meses · $500.000 | el más cerca | corta |
+| **Juan** | 5 meses · $350.000 | a media distancia | media |
+| **Laura** | 4 meses · $300.000 | el más lejos | larga |
+| **Mariana** | 1 mes | sin evidencia suficiente | no tiene, y eso es lo que muestra |
+
+Empieza el video con **Juan**. Si quieres enseñar el contraste de rutas, entra
+después como Laura: la suya es la más larga y la que mejor deja ver el cruce de
+morado a turquesa.
+
+**Antes de grabar, desactiva la reducción de animaciones de Windows.**
+Configuración → Accesibilidad → Efectos visuales → Efectos de animación: encendido.
+Si está apagada, la app respeta esa preferencia y **se salta la animación de las
+partículas**, que es justo el momento que quieres mostrar. No es un fallo: es
+accesibilidad, pero arruina el video.
 
 Ten abiertas tres cosas: el navegador, una terminal con `psql`, y otra terminal
 para los tests.
@@ -27,15 +40,26 @@ para los tests.
 
 **0:00 — La idea, en una frase** *(20s)*
 
-Abre el dashboard. El título dice "Tu dinero, con contexto".
+Abre la app. Aterriza en el login. Entra con el acceso de demostración de
+**Juan** — un clic, no escribas.
+
+Si alguien pregunta por el login en la entrevista: la pantalla misma dice que
+la autenticación es simulada y que la contraseña no se envía ni se guarda. Eso
+es deliberado; un login que parece real insinuaría una seguridad que no existe.
+
+Ya dentro, el título dice "Tu dinero, con contexto".
 
 > Un banco mueve $60.000 y te deja una línea en el extracto. No sabe que eran de la
 > cena del viernes. Eso es lo que construí.
 
 **0:20 — El núcleo, rápido** *(40s)*
 
-Muestra saldo y el historial. No te detengas: esto es lo que el reto pedía como
-mínimo y no es lo interesante.
+Cierra sesión y crea una cuenta en vivo desde el login: nombre y usuario, y
+listo. Escribe el usuario en mayúsculas primero para que se vea que el aviso
+sale **antes** de enviar, no después. Al crearla entras directo. Luego vuelve a
+entrar como Juan y muestra saldo e historial.
+
+No te detengas: esto es lo que el reto pedía como mínimo y no es lo interesante.
 
 **1:00 — El gasto compartido** *(50s)*
 
@@ -49,7 +73,7 @@ Esa frase importa: separa el acuerdo del dinero, y es una decisión de diseño.
 
 **1:50 — El momento clave: pagar con contexto** *(60s)*
 
-Cambia a la cuenta de Juan. Transfiere $60.000 a Samuel **seleccionando la cena**.
+Transfiere $60.000 a Samuel **seleccionando la cena**.
 
 Vuelve al gasto: el pendiente bajó de $120.000 a $60.000, Juan quedó al día.
 
@@ -96,10 +120,17 @@ pytest -q      # 185 passed
 
 Entra a "Tu ruta". La pantalla es oscura, a propósito: es otra habitación.
 
-Deja que la nube se condense sin hablar encima. Dura tres segundos y vale la pena.
+**Cállate cuatro segundos.** Las partículas salen de ruido, se condensan en la
+casa de Habi, se disuelven y se reordenan en los perfiles reales, y al final las
+más cercanas a tu ruta se alinean formando el camino. Es el mejor plano del
+video; no lo pises hablando.
 
-> Eso que acaba de pasar no es una animación de entrada. Es lo que hace el modelo:
-> parte de ruido y lo convierte en estructura. Cada punto es un perfil crediticio.
+Cuando ya estén los datos:
+
+> Eso no es una animación de entrada. Es lo que hace el modelo: parte de ruido y
+> lo convierte en estructura. Primero le pedí que formara el logo, para que se
+> vea que la forma la decide uno. Después lo suelta y cada punto vuelve a ser un
+> perfil crediticio real.
 
 Señala las cifras de arriba:
 
@@ -108,11 +139,18 @@ Señala las cifras de arriba:
 
 Mueve el deslizador de "Hoy" a "Calificas" y deja que se vean cambiar las cifras.
 
+Señala el color del camino:
+
+> El corredor no es de un color plano. Arranca morado, donde todavía no
+> calificas, y termina turquesa. Ese degradado es la probabilidad real en cada
+> punto del camino, no una decoración.
+
 > La línea no es una recta hacia el objetivo. En cada paso el modelo la reproyecta
 > sobre donde viven perfiles reales. Si no hiciera eso, la recomendación sería un
 > punto que voltea el clasificador pero que no describe a ninguna persona.
 
-Cambia a **Mariana** en el selector y vuelve a "Tu ruta":
+Cierra sesión, entra con el acceso de demostración de **Mariana**, y vuelve a
+"Tu ruta":
 
 > Y cuando no hay evidencia suficiente, no le inventamos una ruta. Le decimos qué le
 > falta.

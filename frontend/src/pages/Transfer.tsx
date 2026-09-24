@@ -70,7 +70,6 @@ export default function Transfer() {
     <>
       <div className="page-heading">
         <div>
-          <p className="eyebrow">DALE UN MOTIVO A TU DINERO</p>
           <h1>Transferir dinero</h1>
           <p>Envía a otra persona y vincula el pago a lo que comparten.</p>
         </div>

@@ -29,7 +29,6 @@ export default function Dashboard() {
     <>
       <section className="hero">
         <div>
-          <p className="eyebrow">TU DINERO, CON CONTEXTO</p>
           <h1>Hola, {active!.display_name.split(' ')[0]}.</h1>
           <p>Las cuentas claras. Los planes, compartidos.</p>
         </div>
@@ -54,7 +53,6 @@ export default function Dashboard() {
                 <span className="context-symbol" aria-hidden="true">
                   ◈
                 </span>
-                <p className="eyebrow">MÁS QUE UNA TRANSFERENCIA</p>
                 <h2>
                   Cada pago tiene
                   <br />

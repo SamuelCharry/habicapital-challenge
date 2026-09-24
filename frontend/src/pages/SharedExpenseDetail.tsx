@@ -34,7 +34,6 @@ export default function SharedExpenseDetail() {
       </Link>
       <div className="page-heading">
         <div>
-          <p className="eyebrow">GASTO COMPARTIDO</p>
           <h1>{expense.title}</h1>
           <p>
             Pagó {payer?.display_name} · {people(expense.participants.length)}

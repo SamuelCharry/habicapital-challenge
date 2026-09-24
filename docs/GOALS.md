@@ -350,3 +350,28 @@ punto y después retrocedía, porque el destino era el promedio de un grupo.
 **Evidencia.** 185 tests. Los perfiles que el modelo genera quedan a distancia
 mediana 0,056 de uno real. El clasificador acierta 72,9% contra 70,0% de clase
 mayoritaria — modesto, y así está reportado.
+
+---
+
+### Cierre — tres correcciones antes de entregar ✅
+
+**Crear cuenta.** No existía en la interfaz. El endpoint estaba desde el GOAL 1 y el cliente
+tenía el método, pero **no lo llamaba nadie**: cero sitios de uso en todo el repositorio. Es el
+primero de los cinco puntos del núcleo del reto, así que era un requisito sin cumplir. Ahora hay
+formulario con validación en vivo del usuario, y el estado de cero cuentas ofrece crearla ahí
+mismo en vez de mandarte a la API.
+
+**Las partículas forman el logo.** Ruido → la casa de Habi con su punto → se disuelve → los
+perfiles reales. La silueta está derivada por geometría, no leyendo el JPEG: el logo es un activo
+de marca y no se redistribuye, igual que el PDF del reto. Y el encuadre pasó a ser automático,
+calculado del extremo real de los datos, en vez de una constante puesta a ojo.
+
+**La interfaz al 150%.** Todos los valores del CSS multiplicados por 1,5, incluidos los dos
+breakpoints. Se descartó `zoom: 1.5` —una línea— porque afecta `getBoundingClientRect` y la
+matemática de `devicePixelRatio` del lienzo, que acababa de reescribirse.
+
+**Tres cosas que costaron más de lo que deberían**, todas de entorno y no de código: los
+contenedores de Docker llevaban horas ocupando los puertos con el build viejo, así que nada de lo
+que editaba llegaba al navegador; la instrumentación que puse para depurar congelaba el navegador
+al escribir en el DOM en cada fotograma; y la animación parecía no existir porque este equipo
+tiene activada la reducción de animaciones, que el código respeta a propósito.

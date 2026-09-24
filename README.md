@@ -307,7 +307,9 @@ sube como error. Esa maquinaria escondería exactamente las carreras que estos t
 existen para detectar. En producción, con una política pensada, cambiaría.
 
 **Tests de frontend.** El backend es donde vive la plata y ahí está la suite. El
-frontend lo verifiqué a mano en el navegador. Es la deuda más clara que dejo.
+frontend lo verifiqué a mano en el navegador. Es la deuda más clara que dejo, y
+la animación de las partículas la hace más evidente: es puro lienzo y no tiene
+una sola prueba automática.
 
 **Validación seria del modelo.** Sin validación cruzada, sin conjunto de prueba
 separado, sin métricas de calidad generativa más allá de las que describo abajo, y
@@ -378,8 +380,18 @@ a un usuario real.
 
 ## 6. Los supuestos que hice
 
-- **Una cuenta por persona, sin autenticación.** El reto dice "un usuario con saldo".
-  Asumí que demostrar el modelo de dinero importaba más que el de identidad.
+- **Hay pantalla de login, pero la autenticación es simulada.** La app entra por
+  un login con usuario y contraseña, porque sin puerta de entrada el producto se
+  siente a medio armar. Pero **la contraseña nunca sale del navegador**: no se
+  envía, no se guarda y no se compara. Lo único que se valida es que el usuario
+  exista. La pantalla lo declara sin letra pequeña, y hay un comentario en la
+  línea exacta donde se descarta.
+
+  Lo digo así de explícito porque un login que *parece* real es peor que no
+  tener login: insinúa una seguridad que no existe. Autenticación de verdad
+  —hashing, sesiones, recuperación— era alcance que preferí no fingir. El reto
+  dice "un usuario con saldo"; asumí que demostrar el modelo de dinero importaba
+  más que el de identidad.
 - **Una sola moneda, COP.** Aun así, la moneda viaja con cada monto y mezclar
   monedas distintas lanza excepción, para que agregar otra no sea una reescritura.
 - **Los depósitos son simulados y siempre exitosos.** No hay pasarela, tal como

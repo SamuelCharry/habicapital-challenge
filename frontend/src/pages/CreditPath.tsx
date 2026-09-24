@@ -71,21 +71,8 @@ export default function CreditPath() {
 
   return (
     <div className="credit-page">
-      <p className="eyebrow">TU POSICIÓN HOY</p>
-      <h1>{loading || !data ? 'Calculando tu posición…' : data.headline}</h1>
-
       {data && (
         <>
-          <dl className="credit-rows">
-            {rows(data, waypointIndex).map(row => (
-              <div key={row.label}>
-                <dt>{row.label}</dt>
-                <dd className={row.moved ? 'moved' : undefined}>{row.value}</dd>
-                <span>{row.source}</span>
-              </div>
-            ))}
-          </dl>
-
           <CreditMap path={data} position={position} />
 
           {data.trajectory.length > 0 && (
@@ -105,6 +92,22 @@ export default function CreditPath() {
               </div>
             </div>
           )}
+        </>
+      )}
+
+      <h1>{loading || !data ? 'Calculando tu posición…' : data.headline}</h1>
+
+      {data && (
+        <>
+          <dl className="credit-rows">
+            {rows(data, waypointIndex).map(row => (
+              <div key={row.label}>
+                <dt>{row.label}</dt>
+                <dd className={row.moved ? 'moved' : undefined}>{row.value}</dd>
+                <span>{row.source}</span>
+              </div>
+            ))}
+          </dl>
 
           {data.has_enough_evidence ? (
             <section className="credit-steps">
