@@ -26,6 +26,9 @@ MINIMUM_MONTHS = 3
 SAVINGS_CEILING_MINOR = 150_000_000
 MONTHS_CEILING = 24
 
+# Un millar de pesos, en unidades menores.
+THOUSAND_PESOS = 100_000
+
 
 class NotEnoughEvidence(DomainError):
     """No hay suficiente historial para situar a la persona."""
@@ -83,7 +86,11 @@ def savings_advice(profile: CreditProfile, target_capacity: float) -> int:
     de vuelta a algo que una persona pueda hacer.
     """
     ratio = max(0.0, min(1.0, (target_capacity + 2) / 4))
-    return int(round(ratio * SAVINGS_CEILING_MINOR))
+    exact = ratio * SAVINGS_CEILING_MINOR
+    # Se redondea al millar de pesos más cercano. La inversa de la escala
+    # devuelve cifras como 829.875,76, y un consejo con centavos no es
+    # accionable: nadie se propone ahorrar esa cantidad exacta.
+    return int(round(exact / THOUSAND_PESOS) * THOUSAND_PESOS)
 
 
 def months_advice(target_stability: float, compliance_ratio: float | None) -> int:

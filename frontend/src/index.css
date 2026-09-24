@@ -1082,9 +1082,26 @@ select {
 }
 
 .credit-page {
-  max-width: 1080px;
+  max-width: 1720px;
   margin: 0 auto;
   width: 100%;
+}
+
+/* Las cifras a la izquierda y el diagrama a la derecha, para que al mover el
+   deslizador se vea cambiar el número y el punto al mismo tiempo. Puestos uno
+   debajo del otro, la relación entre ambos se pierde. */
+.credit-top {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: var(--space-12);
+  align-items: start;
+}
+.credit-readout {
+  position: sticky;
+  top: var(--space-8);
+}
+.credit-stage {
+  min-width: 0;
 }
 .credit-page .eyebrow {
   color: var(--dark-muted);
@@ -1102,17 +1119,22 @@ select {
 }
 
 .credit-rows {
-  margin: var(--space-12) 0 0;
+  margin: var(--space-8) 0 0;
   display: flex;
   flex-direction: column;
 }
 .credit-rows > div {
   display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1.3fr);
-  gap: var(--space-4);
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-1) var(--space-4);
   align-items: baseline;
   padding: var(--space-6) 0;
   border-top: 1px solid var(--dark-line);
+}
+/* La procedencia ocupa la fila de abajo: en una columna estrecha, tres
+   columnas dejarían el número sin aire. */
+.credit-rows > div > span {
+  grid-column: 1 / -1;
 }
 .credit-rows dt {
   font-size: var(--text-base);
@@ -1246,13 +1268,24 @@ select {
   text-wrap: pretty;
 }
 
+@media (max-width: 1500px) {
+  /* En una sola columna el diagrama vuelve arriba: la animación tiene que ser
+     lo primero que se ve, igual que en la versión ancha. */
+  .credit-top {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-8);
+  }
+  .credit-stage {
+    order: -1;
+  }
+  .credit-readout {
+    position: static;
+  }
+}
+
 @media (max-width: 1050px) {
   .credit-rows > div {
-    grid-template-columns: minmax(0, 1fr) auto;
     gap: var(--space-1) var(--space-3);
-  }
-  .credit-rows span {
-    grid-column: 1 / -1;
   }
   .credit-legend {
     position: static;

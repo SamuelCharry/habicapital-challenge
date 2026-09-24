@@ -12,14 +12,15 @@ type Row = { label: string; value: string; source: string; moved: boolean };
 
 function rows(path: CreditPathData, waypointIndex: number): Row[] {
   const { profile, trajectory } = path;
-  const current = trajectory[waypointIndex];
-  const moved = Boolean(current) && waypointIndex > 0;
+  // En el punto de partida se muestran los datos reales, no los que se
+  // reconstruyen desde las coordenadas: esa inversa tiene error de redondeo y
+  // haría aparecer "$ 499.987,50" donde el usuario ahorró $ 500.000.
+  const moved = waypointIndex > 0 && trajectory.length > 0;
+  const current = moved ? trajectory[waypointIndex] : null;
   const savings = current ? current.monthly_savings_minor : profile.monthly_savings_minor;
   const months = current ? current.months_consistent : profile.months_consistent;
   const compliance =
-    profile.compliance_ratio === null
-      ? '—'
-      : `${Math.round(profile.compliance_ratio * 100)}%`;
+    profile.compliance_ratio === null ? '—' : `${Math.round(profile.compliance_ratio * 100)}%`;
 
   return [
     {
@@ -71,44 +72,53 @@ export default function CreditPath() {
 
   return (
     <div className="credit-page">
-      {data && (
-        <>
-          <CreditMap path={data} position={position} />
+      {/* Las cifras van al lado del diagrama, no debajo: al mover el
+          deslizador cambian a la vez que el punto se desplaza, y esa
+          coincidencia es justo lo que explica qué significa la ruta. */}
+      <div className="credit-top">
+        <div className="credit-readout">
+          <h1>{loading || !data ? 'Calculando tu posición…' : data.headline}</h1>
 
-          {data.trajectory.length > 0 && (
-            <div className="credit-slider">
-              <input
-                type="range"
-                min={0}
-                max={100}
-                step={1}
-                value={position}
-                onChange={event => setPosition(Number(event.target.value))}
-                aria-label="Recorre la ruta desde hoy hasta el escenario en que calificas"
-              />
-              <div>
-                <span>Hoy</span>
-                <span>Calificas</span>
-              </div>
-            </div>
+          {data && (
+            <dl className="credit-rows">
+              {rows(data, waypointIndex).map(row => (
+                <div key={row.label}>
+                  <dt>{row.label}</dt>
+                  <dd className={row.moved ? 'moved' : undefined}>{row.value}</dd>
+                  <span>{row.source}</span>
+                </div>
+              ))}
+            </dl>
           )}
-        </>
-      )}
+        </div>
 
-      <h1>{loading || !data ? 'Calculando tu posición…' : data.headline}</h1>
+        {data && (
+          <div className="credit-stage">
+            <CreditMap path={data} position={position} />
+
+            {data.trajectory.length > 0 && (
+              <div className="credit-slider">
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={position}
+                  onChange={event => setPosition(Number(event.target.value))}
+                  aria-label="Recorre la ruta desde hoy hasta el escenario en que calificas"
+                />
+                <div>
+                  <span>Hoy</span>
+                  <span>Calificas</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {data && (
         <>
-          <dl className="credit-rows">
-            {rows(data, waypointIndex).map(row => (
-              <div key={row.label}>
-                <dt>{row.label}</dt>
-                <dd className={row.moved ? 'moved' : undefined}>{row.value}</dd>
-                <span>{row.source}</span>
-              </div>
-            ))}
-          </dl>
-
           {data.has_enough_evidence ? (
             <section className="credit-steps">
               <p className="eyebrow">TU RUTA</p>
@@ -135,8 +145,8 @@ export default function CreditPath() {
           )}
 
           <p className="credit-disclaimer">
-            <strong>Esto no aprueba ni niega créditos.</strong> Muestra escenarios posibles a partir
-            de tu comportamiento, calculados sobre un conjunto de datos público de crédito.
+            <strong>Esto no aprueba ni niega créditos.</strong> Muestra escenarios posibles a partir de tu
+            comportamiento, calculados sobre un conjunto de datos público de crédito.
           </p>
         </>
       )}
