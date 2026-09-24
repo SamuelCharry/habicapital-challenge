@@ -50,3 +50,62 @@ reglas abstractas no se validan leyéndolas: se validan corriéndolas contra el
 caso más aburrido que exista. Aquí el caso aburrido era "el primer depósito".
 
 ---
+
+## 2026-09-23 — "Implementado" no quería decir "funciona"
+
+**Qué pasó.** Codex terminó el goal de fundación y reportó bajo el encabezado
+*Implemented*: "Created all 31 listed files". Bajo *Tests*: "All four required
+tests exist. Static checks passed."
+
+Leído rápido, eso es un goal terminado. No lo era. Más abajo, en *Risks*, el
+mismo reporte decía que Docker no estaba disponible en su entorno, que las
+descargas de dependencias fueron bloqueadas, y que por lo tanto ni los tests ni
+el build del frontend se habían llegado a ejecutar. El agente lo declaró
+honestamente —cerró con "Goal 0 is **not verified complete**"— pero la
+información que contradecía el titular estaba tres secciones más abajo.
+
+**Qué habría pasado si me lo trago.** Habría cerrado el goal con cuatro tests
+que nadie corrió nunca, y habría construido el ledger encima de una base no
+verificada. El fallo no habría aparecido en el goal 0: habría aparecido en el
+goal 3, cuando un test de concurrencia fallara y yo no supiera si el problema
+era el lock, la transacción o que la fundación nunca funcionó.
+
+**Qué hice.** Levanté Docker y Postgres 17 en mi máquina, instalé las
+dependencias y corrí todo yo: los cuatro tests pasan contra PostgreSQL real
+(no SQLite, que es justo lo que uno de esos tests verifica), el build de
+TypeScript compila, y el endpoint responde 200. Además hice una prueba que no
+estaba en el plan: tumbé el contenedor de la base con el backend arriba y
+confirmé que devuelve 503 `degraded` en vez de un 500 sin manejar, y que se
+recupera solo al levantarla otra vez. Eso vale más que el test con mock,
+porque el mock demuestra que el `except` está escrito y esto demuestra que
+atrapa el error que de verdad lanza el driver.
+
+**Lo que me llevo.** El reporte de un agente describe lo que *intentó* hacer,
+no lo que quedó funcionando, y la diferencia se esconde donde uno deja de
+leer. Mi regla desde aquí: ningún goal se cierra con evidencia que produjo el
+mismo agente que escribió el código. Los tests los corro yo.
+
+---
+
+## 2026-09-23 — El agente se frenó por una ambigüedad mía
+
+**Qué pasó.** En el primer intento de implementar la fundación, Codex no
+escribió ni un archivo. Reportó un conflicto: mi instrucción decía
+"`backend/src/` debe contener solo `presentation/`", pero `PLAN.md` listaba
+también `backend/src/__init__.py`. Literalmente, un `__init__.py` no es
+`presentation/`.
+
+**Por qué lo dejo anotado.** Tenía razón, y el contrato que yo mismo escribí le
+ordena parar y reportar en vez de improvisar arquitectura. Es el
+comportamiento que quería. Pero cuesta una iteración completa, y la causa no
+fue el modelo: fue que yo escribí una restricción absoluta ("solo") cuando
+quería una prohibición específica (no crear `domain/`, `application/` ni
+`infrastructure/`). Al reformularla así, implementó sin objetar.
+
+**Lo que me llevo.** Un agente con instrucción de detenerse ante
+contradicciones convierte cada ambigüedad mía en una parada. Es el intercambio
+correcto para código que mueve plata —prefiero pagar iteraciones que recibir
+arquitectura inventada— pero significa que la precisión de mis instrucciones
+es parte del costo, no un detalle de estilo.
+
+---
