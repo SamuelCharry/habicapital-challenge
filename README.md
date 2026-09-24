@@ -1,557 +1,289 @@
 # habicapital-challenge
 
-Una billetera donde el dinero conserva contexto, y donde ese contexto se convierte
-en **evidencia para tu crédito de vivienda**.
+Una billetera donde cada movimiento de dinero conserva su contexto. Ese historial puede servir como evidencia para explorar la posibilidad de acceder a un crédito de vivienda.
 
 Reto técnico para practicantes de HabiCapital, convocatoria 2027.
 
----
-
 ## Qué construí
 
-El núcleo que pedía el reto: crear cuenta, cargar saldo simulado, transferir entre
-cuentas, consultar saldo y ver historial.
+Implementé las funciones principales del reto: crear una cuenta, cargar saldo simulado, transferir dinero, consultar el saldo y revisar el historial.
 
-Encima, una sola cosa: **tu comportamiento con la plata del día a día se convierte
-en evidencia para tu crédito de vivienda.**
+También agregué una forma de mostrar cómo el comportamiento financiero diario podría relacionarse con un crédito de vivienda. La aplicación registra dos datos: la constancia del ahorro, calculada a partir de los depósitos hechos durante varios meses, y el cumplimiento de pagos compartidos. Por ejemplo, pagar cada mes la parte correspondiente del arriendo deja un registro de pago entre personas.
 
-La billetera ya registra dos cosas que un originador hipotecario quiere ver y que
-normalmente nadie puede demostrar: **cuánto ahorras con constancia** —que sale de
-tus depósitos a lo largo de los meses— y **si cumples con lo que debes**, que sale
-de los gastos compartidos. Un gasto compartido no es la funcionalidad estrella: es
-la fuente de datos. Pagar tu parte del arriendo cada mes es historial de pago con
-personas reales.
+Con esos datos, un modelo de difusión ubica cada perfil junto a otros perfiles crediticios y propone una ruta hacia uno que podría calificar. La ruta indica qué cambios serían necesarios. No representa una decisión real de crédito.
 
-Con eso, un **modelo de difusión** te sitúa dentro de la población de perfiles
-crediticios y te traza una ruta: qué versión alcanzable de ti mismo sí calificaría,
-y qué tendrías que cambiar para llegar ahí.
+Elegí esta extensión porque HabiCapital trabaja con productos financieros relacionados con vivienda y con crédito hipotecario. En ese contexto, saber si una persona podría calificar y entender qué tendría que mejorar puede ser más útil que recibir una respuesta sin explicación.
 
-Elegí esto porque HabiCapital reconstruye productos financieros alrededor de la
-vivienda **empezando por el crédito hipotecario**, y su problema no es mover plata:
-es que el proceso de saber si calificas sea rápido, con datos, y no una caja negra
-donde te dicen que no sin explicarte nada.
+### Por qué usé un modelo de difusión
 
-### Por qué un modelo de difusión y no una regresión
+Un clasificador puede encontrar cambios que alteren su resultado, aunque esos cambios no sean realistas. Por ejemplo, podría recomendar aumentar mucho los ingresos sin considerar si ese cambio tiene sentido junto con el ahorro y la estabilidad de la persona.
 
-Encontrar un cambio que voltee un clasificador es fácil, y produce basura: "sube tus
-ingresos 40% y quítate ocho años". Lo difícil es encontrar un cambio que corresponda
-a **una persona que podría existir**, con ingresos, ahorro y estabilidad coherentes
-entre sí.
+El modelo de difusión aprende la forma de los perfiles del conjunto de datos. La ruta se ajusta en cada paso para mantenerse cerca de perfiles reales. Así evita recomendar combinaciones alejadas de los datos. Un test verifica que ningún punto de la ruta quede a más de 0,6 de un perfil real.
 
-Un modelo de difusión aprende exactamente eso: la variedad donde viven los perfiles
-reales. La ruta se construye reproyectando cada paso sobre esa variedad, así que
-pasa por donde de verdad hay gente en vez de cortar en línea recta por zonas vacías.
-Sin esa reproyección, la recomendación sería un ejemplo adversarial disfrazado de
-consejo financiero. Hay un test que lo comprueba: ningún punto de la ruta queda a
-más de 0.6 de un perfil real.
+Implementé el modelo en NumPy y derivé la retropropagación a mano. Tiene cerca de 18.000 parámetros. Agregar una dependencia de unos 200 MB para hacer cuatro multiplicaciones de matrices no se justificaba en este caso. El entrenamiento se ejecuta por separado y produce un artefacto de 207 KB. El backend solo necesita cargarlo y hacer esas multiplicaciones.
 
-Está escrito **a mano en numpy**, con la retropropagación derivada a mano: son unos
-18.000 parámetros y una dependencia de 200 MB costaría más de lo que da. El
-entrenamiento se corre aparte y deja un artefacto de 207 KB; el backend solo hace
-cuatro multiplicaciones de matrices.
+### Límites del producto
 
-### Lo que este producto NO es
+La aplicación no aprueba ni rechaza créditos. La interfaz lo aclara. Muestra escenarios basados en el comportamiento registrado, pero no toma decisiones crediticias. Tampoco muestra un puntaje: el objetivo es que la persona explore posibles cambios, no que interprete un número como una evaluación real.
 
-No aprueba ni niega créditos, y la interfaz lo dice sin letra pequeña. Muestra
-escenarios a partir de comportamiento observado. El crédito está regulado y una
-herramienta que insinúe decisiones crediticias tiene implicaciones de equidad
-reales; preferí declarar el límite antes que rozarlo. Tampoco hay un puntaje en
-pantalla: en cuanto pintas "687 puntos", el producto deja de ser exploratorio.
+### Datos utilizados
 
-### De dónde salen los datos, sin adornos
+Usé el conjunto UCI German Credit, que contiene 1.000 perfiles y 20 atributos. Es de Alemania, de 1994, y corresponde a crédito de consumo, no hipotecario. Lo usé por la estructura de sus perfiles, no por sus montos.
 
-Del **UCI German Credit** (1.000 perfiles, 20 atributos, dominio público). Es alemán,
-de 1994, en marcos, y es crédito al consumo, no hipotecario. Lo uso por su
-**estructura**, no por sus montos.
+El conjunto ayuda a definir la forma de la población y la frontera entre perfiles. La relación entre el comportamiento de una persona en Colombia y los ejes del modelo la definí yo. Esa correspondencia está en `domain/credit.py`, con sus rangos de referencia. No se obtuvo directamente de los datos.
 
-Y el supuesto más grande, que quiero decir en voz alta: **el dataset aporta la forma
-de la población y dónde está la frontera; la correspondencia entre el comportamiento
-de una persona en Colombia y esos ejes la definí yo.** Está en `domain/credit.py`
-con los rangos de referencia explícitos. No salió de los datos.
-
-## Cómo lo corro
+## Cómo ejecutarlo
 
 ```sh
 cp .env.example .env
 docker compose up --build
 ```
 
-Frontend en `http://localhost:5173`, API en `http://localhost:8000`.
+El frontend queda disponible en `http://localhost:5173` y la API en `http://localhost:8000`.
 
-Para los tests hace falta PostgreSQL arriba:
+Para ejecutar los tests, primero inicia PostgreSQL:
 
 ```sh
 docker compose up -d db
 python -m venv .venv
 .venv/Scripts/python.exe -m pip install -r backend/requirements-dev.txt
-
 cd backend
 POSTGRES_HOST=localhost POSTGRES_USER=habicapital \
 POSTGRES_PASSWORD=local-development-only POSTGRES_DB=habicapital \
 ../.venv/Scripts/python.exe -m pytest -v
 ```
 
-**185 tests.** Dominio, aplicación (sin base de datos), integración, concurrencia
-con hilos reales, y once que validan el modelo de difusión contra una distribución
-conocida de antemano.
+La suite tiene 185 tests. Incluye pruebas de dominio, aplicación sin base de datos, integración, concurrencia con hilos reales y 11 pruebas del modelo de difusión con una distribución conocida.
 
-Para el modelo hay dos comandos más, que se corren a mano:
+Estos comandos entrenan el modelo y cargan datos de demostración. Se ejecutan manualmente:
 
 ```sh
 cd backend
-../.venv/Scripts/python.exe scripts/train_credit_model.py   # entrena y guarda model.npz
-../.venv/Scripts/python.exe scripts/seed_demo.py            # datos de demo con 14 meses de historial
+../.venv/Scripts/python.exe scripts/train_credit_model.py  # Entrena y guarda model.npz
+../.venv/Scripts/python.exe scripts/seed_demo.py             # Carga 14 meses de historial de ejemplo
 ```
 
-La comprobación que más me importa, contra la base directamente:
+Esta consulta permite comprobar que la suma de los asientos del ledger es cero:
 
 ```sql
-SELECT SUM(amount_minor) FROM persistence_ledgerentrymodel;  -- 0, siempre
+SELECT SUM(amount_minor) FROM persistence_ledgerentrymodel; -- 0
 ```
 
-## Stack y por qué
+## Stack y decisiones técnicas
 
-**Python + Django + DRF.** El reto pide justificar la elección, no acertar la de
-ustedes. Elegí Python porque es donde soy más rápido y donde puedo defender el
-código en una entrevista, y Django porque su capa de transacciones y su ORM sobre
-PostgreSQL me dan `SELECT FOR UPDATE` y constraints reales sin escribir SQL a mano.
+**Python, Django y DRF.** Elegí Python porque es el lenguaje en el que trabajo más rápido y puedo explicar mejor el código. Django ofrece transacciones y un ORM integrado con PostgreSQL. También permite usar `SELECT FOR UPDATE` y restricciones de base de datos sin escribir SQL para cada operación.
 
-**PostgreSQL.** Lo necesito por lo que hace el sistema, no por moda: transacciones
-ACID, bloqueo a nivel de fila, constraints que el motor hace cumplir, y triggers.
-Tres de las protecciones de este proyecto viven en la base, no en el código. *No
-afirmo que HabiCapital use PostgreSQL* — el documento dice "bases de datos
-relacionales y no relacionales" y nada más.
+**PostgreSQL.** Lo elegí por las transacciones ACID, el bloqueo por fila y las restricciones que puede hacer cumplir la base de datos. Algunas protecciones del proyecto viven en PostgreSQL y no dependen solo del código. El reto menciona bases relacionales y no relacionales, pero no especifica que HabiCapital use PostgreSQL.
 
-**React + TypeScript.** Es el lado de frontend del stack que describen, y TypeScript
-me deja modelar los montos como `bigint` para que el compilador impida que alguien
-los convierta a punto flotante.
+**React y TypeScript.** Este stack cubre el frontend descrito en el reto. TypeScript permite representar los montos como `bigint` y detectar conversiones accidentales a punto flotante.
 
-**numpy, y nada más de machine learning.** El modelo son ~18.000 parámetros. PyTorch
-pesa 200 MB y habría entrado a CI y a la imagen de producción para hacer cuatro
-multiplicaciones de matrices. Escribirlo a mano me costó una tarde y me deja poder
-explicar cada línea, que en una entrevista de pair programming vale más que la
-comodidad.
+**NumPy para el modelo.** El modelo tiene cerca de 18.000 parámetros. PyTorch habría agregado unos 200 MB a CI y a la imagen de producción para hacer cuatro multiplicaciones de matrices. Implementarlo a mano tomó una tarde y me permite explicar cada operación.
 
-**Monolito modular.** Múltiples servicios harían que una transferencia cruce un
-límite de red, y entonces "la plata no se pierde" pasaría a depender de
-transacciones distribuidas. Para este problema eso es meterse un problema mucho más
-difícil sin necesidad. Las fronteras están marcadas por capas, así que extraer algo
-después sería posible; hoy no hace falta.
-
----
+**Monolito modular.** Una transferencia no necesita cruzar la red entre varios servicios. Mantenerla en un solo proceso evita tener que coordinar transacciones distribuidas para garantizar que el dinero no se pierda. Las capas están separadas, así que más adelante sería posible extraer un componente si hiciera falta.
 
 # Las ocho preguntas
 
-## 1. Las decisiones clave y por qué las tomé
+## 1. Decisiones clave
 
-**Ledger de doble partida, desde el primer peso.** Nunca guardo un saldo y lo
-modifico. Guardo asientos inmutables y el saldo es la suma de los asientos de una
-cuenta. Cada operación escribe dos asientos que suman cero.
+**Ledger de doble partida.** No guardo un saldo que se modifica con cada operación. Guardo asientos inmutables y calculo el saldo sumándolos. Cada operación crea dos asientos cuya suma es cero.
 
-**El dinero entra por una cuenta de sistema.** Un depósito simulado también es de
-doble partida: escribe `-50.000` contra una cuenta `EXTERNAL_FUNDING` y `+50.000`
-contra la tuya. Es la única cuenta autorizada a quedar en negativo, y su saldo
-negativo mide exactamente cuánta plata se ha inyectado al sistema.
+**Cuenta de sistema para los depósitos.** Un depósito simulado también crea dos asientos. Por ejemplo, un depósito de 50.000 registra `-50.000` en `EXTERNAL_FUNDING` y `+50.000` en la cuenta del usuario. Esa es la única cuenta que puede quedar en negativo. Su saldo muestra cuánto dinero se ha inyectado al sistema.
 
-Esta decisión tiene una consecuencia que vale más que la elegancia: **la
-conservación no tiene excepciones**. La suma de *todo* el ledger es cero siempre,
-depósitos incluidos. La pregunta "¿perdí un peso?" se responde con una query, y no
-tengo que acordarme de qué operaciones cuentan y cuáles no. La alternativa —marcar
-los depósitos como exentos— era más fácil de escribir, pero crea una categoría de
-"asientos que no cuadran" que después alguien copia a otra operación.
+Así, la suma de todo el ledger es siempre cero, incluso después de los depósitos. Se puede comprobar con una consulta. No hay que crear una excepción para las operaciones que agregan dinero desde afuera.
 
-**El saldo se deriva, no se cachea.** No hay columna `balance`. Es más lento y no
-me importa: si no hay caché, no hay nada que pueda quedar desincronizado del ledger.
+**El saldo se calcula desde el ledger.** No hay una columna `balance`. Calcularlo puede ser más lento, pero evita que un saldo guardado quede desactualizado frente a los asientos.
 
-**Dinero en enteros, nunca en punto flotante.** `Money` guarda centavos como entero
-y rechaza floats, rechaza booleanos —que en Python son enteros disfrazados— y
-rechaza mezclar monedas. No existe conversión a float en ninguna dirección.
+**Montos enteros.** `Money` guarda centavos como enteros. Rechaza floats, booleanos y mezclas de monedas. No convierte a punto flotante.
 
-**La inmutabilidad la impone la base de datos.** Un trigger de PostgreSQL rechaza
-todo `UPDATE` y `DELETE` sobre los asientos. En el código habría sido más legible y
-trivial de saltarse.
+**La base de datos impide modificar el ledger.** Un trigger de PostgreSQL rechaza cualquier `UPDATE` o `DELETE` sobre los asientos. Así, la inmutabilidad no depende solo de que la aplicación siga una regla.
 
-El detalle de cada patrón, con su costo y la alternativa que descarté, está en
-[`docs/architecture-decisions.md`](docs/architecture-decisions.md). Ahí también
-está por qué **evalué Singleton y lo rechacé**.
+En [`docs/architecture-decisions.md`](docs/architecture-decisions.md) explico cada patrón, su costo y las alternativas que descarté. También explico por qué evalué Singleton y no lo usé.
 
-## 2. Cómo sé que mi sistema no pierde un peso
+## 2. Cómo verifico que el sistema no pierde dinero
 
-### Qué puede salir mal
+### Riesgos que revisé
 
-Pensé esto como cinco formas concretas de perder plata, no como una lista de buenas
-prácticas:
+1. **Escribir solo un asiento.** Si se acredita una cuenta sin debitar otra, o al revés, el dinero aparece o desaparece.
+2. **Leer el saldo antes de bloquear la cuenta.** Dos transferencias podrían ver los mismos fondos y aprobarse, aunque juntas dejen la cuenta en negativo.
+3. **Procesar dos veces un reintento.** Si el cliente no recibe respuesta y repite la solicitud, podría duplicar la operación.
+4. **Dejar una operación a medias.** Un error podría ocurrir después de guardar solo parte de los asientos.
+5. **Redondear mal un reparto.** Las partes de una división podrían no sumar el total original.
+6. **Crear un deadlock.** Dos transferencias cruzadas podrían bloquear las mismas cuentas en orden opuesto y quedar esperando.
 
-1. **Escribir una sola pata.** Se acredita al que recibe y no se debita al que
-   envía, o al revés. La plata aparece o desaparece de la nada.
-2. **Leer el saldo antes de bloquear.** Dos transferencias simultáneas ven los
-   mismos fondos, ambas pasan el chequeo, y la cuenta queda sobregirada.
-3. **Reintentos duplicados.** El cliente no recibe respuesta, reintenta, y se cobra
-   dos veces.
-4. **Escrituras parciales.** Algo falla a mitad de la operación y queda medio
-   asiento escrito.
-5. **Redondeo.** Dividir $100.000 entre 3 y que las partes no sumen $100.000.
+### Protecciones implementadas
 
-Y una sexta que no pierde plata pero cuelga el sistema: **deadlock**, cuando dos
-transferencias cruzadas bloquean las mismas filas en orden opuesto.
+**Asientos completos.** El factory devuelve una tupla con los dos asientos. El repositorio solo ofrece `append(entries)`, que recibe el conjunto completo.
 
-### Cómo los protejo
+**Bloqueo antes de leer el saldo.** Uso `SELECT FOR UPDATE` para bloquear las dos cuentas y después leo el saldo. Un test de aplicación registra el orden de las llamadas y falla si se cambia.
 
-**Contra la pata suelta:** el factory devuelve una *tupla* de dos asientos. No es que
-esté prohibido escribir uno solo — es que no hay forma de obtenerlo. El repositorio
-solo expone `append(entries)`.
+**Orden fijo para los bloqueos.** Bloqueo las cuentas por UUID ascendente, sin importar cuál envía el dinero. Así, las transferencias A→B y B→A siguen el mismo orden y no se bloquean mutuamente.
 
-**Contra la carrera de saldo:** bloqueo ambas cuentas con `SELECT FOR UPDATE` y solo
-después leo el saldo. Hay un test de aplicación que usa un repositorio falso para
-registrar el orden de las llamadas y **falla si alguien reordena esas dos líneas**.
+**Idempotencia en la base de datos.** Un constraint de unicidad evita procesar dos veces la misma llave. Consultar primero si la llave existe y luego insertar no alcanza: dos solicitudes simultáneas podrían pasar la consulta antes de que alguna inserte.
 
-**Contra el deadlock:** bloqueo siempre en orden ascendente de UUID, sin importar
-quién envía. Si cada transferencia bloqueara "mi cuenta primero", una A→B y una B→A
-simultáneas se esperarían para siempre.
+**Una transacción por operación.** La transacción incluye el registro de idempotencia y los dos asientos. Si falla una parte, se revierte todo. Los efectos secundarios que no son críticos, como actualizar el gasto compartido, ocurren después del commit.
 
-**Contra el duplicado:** unicidad impuesta por un constraint de la base, detectando
-el error de integridad. Consultar si la llave existe y después insertar es el patrón
-intuitivo y está roto: dos reintentos concurrentes pasan los dos el chequeo.
+**Reparto con enteros.** El residuo se distribuye de forma determinista, de a un centavo.
 
-**Contra la escritura parcial:** una sola transacción que cubre el registro de
-idempotencia y los dos asientos, y nada más. Los efectos secundarios no críticos
-—actualizar el gasto compartido— se despachan **después** del commit.
+### Pruebas ejecutadas
 
-**Contra el redondeo:** aritmética entera y reparto determinista del residuo, de a
-un centavo.
+Las pruebas siguientes se ejecutaron contra el servidor con solicitudes concurrentes:
 
-### Qué evidencia tengo
-
-Esta es la parte que no quiero que suene a promesa. Todo lo de abajo lo ejecuté.
-
-**Ataques concurrentes reales, con procesos en paralelo contra el servidor:**
-
-| Ataque | Resultado |
+| Prueba | Resultado |
 |---|---|
-| 10 transferencias simultáneas contra un saldo que alcanza para **una** | 1× `201`, 9× `422`. Saldo nunca negativo |
-| La **misma** llave de idempotencia, 12 requests en paralelo | 1× `201`, 11× `200`, **todos con el mismo `operation_id`**, una sola operación en el ledger |
-| 40 transferencias cruzadas A→B y B→A simultáneas | 40× `201`, **cero deadlocks** |
-| 20 depósitos y transferencias mezclados sobre la misma cuenta | saldo final exacto al peso |
+| 10 transferencias simultáneas con saldo suficiente para una | 1 respuesta `201` y 9 respuestas `422`. El saldo no quedó negativo. |
+| 12 solicitudes simultáneas con la misma llave de idempotencia | 1 respuesta `201`, 11 respuestas `200`, el mismo `operation_id` en todas y una sola operación en el ledger. |
+| 40 transferencias cruzadas A→B y B→A | 40 respuestas `201` y ningún deadlock. |
+| 20 depósitos y transferencias sobre la misma cuenta | Saldo final exacto al peso. |
 
-**El reparto, verificado exhaustivamente:** corrí las 32.934 combinaciones de total
-(desde 1 hasta 3.000) y número de participantes (de 2 a 12). En todas la suma de las
-partes es exactamente el total, ninguna parte queda en cero, y la diferencia entre la
-mayor y la menor es de un centavo.
+También probé exhaustivamente 32.934 combinaciones de total y número de participantes: totales de 1 a 3.000 y entre 2 y 12 participantes. En todas, las partes sumaron el total, ninguna quedó en cero y la diferencia máxima entre la parte mayor y la menor fue de un centavo.
 
-**La inmutabilidad, probada por fuera de la aplicación:** lancé un `DELETE` con
-`psql` directo contra la tabla de asientos, saltándome el backend entero.
-`ERROR: Ledger entries are append-only`.
+Para comprobar la inmutabilidad, ejecuté un `DELETE` directamente con `psql`, sin pasar por el backend. PostgreSQL respondió `ERROR: Ledger entries are append-only`.
 
-**Inyección SQL:** mandé `'; DELETE FROM persistence_ledgerentrymodel; --` como
-título de un gasto. Se guardó como texto literal, el ledger quedó intacto. Hay un
-test de regresión que lo comprueba.
+En una prueba de inyección SQL envié `'; DELETE FROM persistence_ledgerentrymodel; --` como título de un gasto. La aplicación lo guardó como texto y el ledger no cambió. Hay un test de regresión para ese caso.
 
-**El rollback:** un test inyecta un fallo después de que se escribiría el primer
-asiento y verifica que quedan cero asientos **y ninguna fila de idempotencia
-huérfana** — si quedara, el reintento legítimo con la misma llave quedaría
-bloqueado para siempre.
+Otra prueba provoca un error después de escribir el primer asiento. Comprueba que no quede ningún asiento ni un registro de idempotencia huérfano que impida un reintento válido.
 
-**Los tests de concurrencia los corrí 5 veces seguidas**, no una. Una carrera que
-falla una de cada cinco veces no es un test inestable: es un bug que aparece el día
-que hay tráfico.
+Ejecuté los tests de concurrencia cinco veces seguidas. Después de estas pruebas, la suma global del ledger siguió siendo `0`.
 
-Y después de todo lo anterior, la suma global del ledger sigue siendo `0`.
+### Pruebas del modelo
 
-### Y el modelo, ¿cómo sé que no es humo?
+Probé el modelo con la distribución de las dos medialunas entrelazadas, cuya forma se conoce de antemano. Once tests revisan estos resultados:
 
-Un modelo generativo no se valida leyendo el código. Se valida entrenándolo sobre
-una distribución **cuya forma conozco de antemano** y comprobando que la reproduce.
-Once tests hacen eso con las dos medialunas entrelazadas, el ejemplo canónico:
+- Las muestras generadas quedan cerca de la distribución real. La mediana de la distancia al punto real más cercano es menor que 0,2.
+- El modelo genera las dos medialunas, no solo una. Esto comprueba que no haya colapsado a una parte de la distribución.
+- Un punto en una zona vacía se mueve hacia los datos y reduce su distancia a la distribución en más de 75%.
+- La retropropagación reduce la pérdida a menos de la mitad. Esto sirve para detectar errores en las derivadas escritas a mano.
 
-- Las muestras generadas caen sobre la distribución, no en una nube difusa alrededor
-  del promedio: mediana de distancia al punto real más cercano por debajo de 0,2.
-- **Aparecen las dos medialunas, no una.** El colapso de modos es la forma típica en
-  que un modelo generativo falla pareciendo que funciona.
-- Un punto inventado en una zona vacía se corrige hacia donde hay datos, reduciendo
-  su distancia a la variedad en más del 75%. Eso es lo que impide que la
-  recomendación sea un consejo imposible.
-- La retropropagación, que está derivada a mano, reduce la pérdida a menos de la
-  mitad. Si tuviera un signo cambiado, ninguna revisión de código lo habría notado.
+En el modelo usado por la aplicación, los 2.500 perfiles generados tienen una distancia mediana de `0,056` respecto al perfil real más cercano del conjunto de datos. Los perfiles generados y los datos reales aparecen superpuestos en el mapa.
 
-Y sobre el modelo que de verdad se sirve: los 2.500 perfiles que genera quedan a una
-distancia mediana de **0,056** de un perfil real del dataset. Están dibujados en el
-mapa, superpuestos a los reales — si el modelo no hubiera aprendido la distribución,
-formarían una nube aparte y se vería.
+Durante las pruebas encontré un problema en el planificador de ruido. Con 200 pasos, los valores de `beta` habituales para un DDPM de 1.000 pasos dejaban 36% de señal al final. Por eso, iniciar el muestreo desde ruido puro no era válido. Corregí el planificador y la pérdida bajó de 0,52 a 0,31.
 
-Un detalle que encontré así: un test mío afirmaba que el planificador de ruido
-destruía la señal, y falló. Tenía razón el test. Con 200 pasos, el `beta` habitual
-de DDPM —pensado para 1.000— dejaba un 36% de señal al final de la cadena, así que
-muestrear desde ruido puro no era válido. Lo corregí y la pérdida bajó de 0,52 a
-0,31 de paso.
+## 3. Qué dejé fuera
 
-## 3. Qué dejé fuera y por qué
+**Autenticación real.** La aplicación no implementa login ni contraseñas reales. El frontend permite elegir una cuenta activa. Construir autenticación bien llevaba tiempo y no era el foco del reto. Una implementación incompleta habría dado una impresión de seguridad que no existe.
 
-**Autenticación.** No hay login ni contraseñas. El frontend tiene un selector de
-cuenta activa. Construirla bien toma tiempo y no demuestra nada sobre el problema
-del reto, que es mover plata sin perderla. Construirla mal sería peor que no
-tenerla.
+**Otros métodos de reparto.** Dejé preparada la interfaz `SplitStrategy`, pero solo implementé el reparto equitativo. `SharedExpense` no depende de un tipo de reparto específico. Preferí una extensión que funciona a varias opciones sin usar.
 
-**Las otras estrategias de reparto.** Dejé la costura lista —`SplitStrategy` es una
-interfaz y `SharedExpense` nunca ramifica por tipo— pero solo implementé el reparto
-equitativo. Una implementación sin usar es peor evidencia que una costura limpia.
+**Editar o borrar gastos.** Si un gasto ya tiene pagos, editarlo requiere definir qué pasa con el dinero transferido. No agregué esa función sin resolver ese caso.
 
-**Editar o borrar gastos.** Un gasto con pagos asociados no se puede simplemente
-editar sin decidir qué pasa con lo ya pagado. Esa decisión merece pensarse, no
-improvisarse.
+**Otras funciones.** Dejé fuera paginación, búsqueda, notificaciones, gastos recurrentes, reversos, comisiones y varias monedas por alcance.
 
-**Paginación, búsqueda, notificaciones, gastos recurrentes, reversos, comisiones,
-multi-moneda.** Alcance.
+**Reintentos automáticos y backoff.** Si la base informa un conflicto, la aplicación lo devuelve como error. Automatizar el reintento podría ocultar las carreras que las pruebas intentan detectar. En producción definiría una política específica.
 
-**Reintentos automáticos y backoff.** A propósito. Si la base reporta un conflicto,
-sube como error. Esa maquinaria escondería exactamente las carreras que estos tests
-existen para detectar. En producción, con una política pensada, cambiaría.
+**Tests de frontend.** Verifiqué el frontend manualmente en el navegador. Es una deuda pendiente, sobre todo para la animación de partículas, que está hecha en canvas y no tiene pruebas automáticas.
 
-**Tests de frontend.** El backend es donde vive la plata y ahí está la suite. El
-frontend lo verifiqué a mano en el navegador. Es la deuda más clara que dejo, y
-la animación de las partículas la hace más evidente: es puro lienzo y no tiene
-una sola prueba automática.
+**Validación completa del modelo.** No hice validación cruzada, no separé un conjunto de prueba, no medí otras métricas generativas y no audité sesgos. El tiempo disponible no alcanzó. Por eso, los resultados que presento no equivalen a una validación para uso real.
 
-**Validación seria del modelo.** Sin validación cruzada, sin conjunto de prueba
-separado, sin métricas de calidad generativa más allá de las que describo abajo, y
-sin auditoría de sesgo. Con un día no cabía, y prefiero decirlo a insinuar rigor que
-no hice.
+## 4. Qué haría con más tiempo
 
-## 4. Qué haría distinto con más tiempo
+- **Probar el ledger con secuencias aleatorias.** Ahora verifico la conservación con secuencias que elegí. Generaría depósitos, transferencias y fallos aleatorios, y comprobaría que la suma siga siendo cero.
+- **Medir el costo de calcular el saldo.** Elegí no guardar una copia del saldo para evitar inconsistencias. Con los datos de demo no se nota el costo, pero no medí cuántos asientos por cuenta empiezan a hacerlo lento.
+- **Agregar idempotencia a los depósitos.** Las transferencias la tienen, pero los depósitos no. Como son simulados no es urgente, aunque la diferencia no se debe solo al diseño.
+- **Agregar tests al frontend.** Empezaría por la conversión entre pesos y centavos y por la vista previa del reparto, para comprobar que coincidan con el backend.
+- **Definir cuánto duran las llaves de idempotencia.** Ahora no expiran, así que la tabla crecería sin límite en un sistema real.
 
-**Un test de propiedades sobre el ledger completo.** Hoy verifico conservación
-después de secuencias que yo elegí. Me gustaría generar secuencias aleatorias de
-depósitos, transferencias y fallos inyectados, y afirmar que la suma es cero pase lo
-que pase. Es el tipo de test que encuentra lo que uno no pensó.
+## 5. Qué no sé todavía
 
-**Medir antes de defender el saldo derivado.** Decidí no cachear el saldo por
-correctitud, y con datos de demo no se nota. No sé en qué número de asientos por
-cuenta empieza a doler, y debería saberlo antes de afirmar que la decisión escala.
+**Cómo se comportaría con carga real.** Las pruebas de concurrencia usan decenas de solicitudes simultáneas en una máquina. No medí cuándo el bloqueo por fila se vuelve un cuello de botella. Una cuenta con muchas operaciones podría serializarlas, pero no lo he comprobado.
 
-**Idempotencia en depósitos.** Las transferencias la tienen; los depósitos no.
-Como son simulados no es urgente, pero es una asimetría que no tiene buena
-justificación más allá del alcance.
+**Si el nivel de aislamiento es adecuado para todos los casos.** Uso `READ COMMITTED` con bloqueos pesimistas porque puedo explicar cómo funciona en este sistema. No tengo experiencia práctica comparándolo con `SERIALIZABLE` y reintentos.
 
-**Tests de frontend**, empezando por la conversión de pesos a centavos y por la
-vista previa del reparto, que es donde el frontend podría discrepar del backend.
+**Cómo se opera un ledger financiero real.** Implementé doble partida porque permite verificar la conservación, pero no conozco en detalle cómo un equipo concilia sistemas externos, prepara reportes, audita operaciones o responde a reclamos.
 
-**Expiración de llaves de idempotencia.** Hoy viven para siempre. En un sistema real
-esa tabla crece sin límite.
+**Cómo monitorear el sistema.** No agregué métricas, trazas ni alertas. Si algo fallara en producción, no tendría una forma automática de detectarlo antes de que lo reporte un usuario.
 
-## 5. Qué NO sé
+**Si esta extensión es la que más valor agrega.** La elegí porque el enunciado la sugería, pero no hablé con personas que tengan este problema.
 
-**No sé cómo se comporta esto bajo carga real.** Mis pruebas de concurrencia son
-decenas de requests simultáneos en una máquina. No sé en qué punto el bloqueo
-pesimista sobre la fila de la cuenta se vuelve el cuello de botella, ni cómo se
-vería eso. Sospecho que una cuenta muy activa serializa todas sus operaciones y
-degrada, pero no lo he medido.
+**Qué tan bueno es el clasificador.** Acierta 72,9%, frente a 70,0% al predecir siempre la clase mayoritaria. La diferencia es de 2,9 puntos porcentuales. Reducir 20 atributos a dos ejes interpretables probablemente cuesta precisión. Además, no usé validación cruzada ni un conjunto de prueba separado, así que ese resultado puede ser optimista.
 
-**No sé si el nivel de aislamiento que elegí es el correcto para todos los casos.**
-Uso `READ COMMITTED` con bloqueo pesimista porque es lo que entiendo y puedo
-razonar. No tengo experiencia práctica con `SERIALIZABLE` y reintentos, y no sabría
-defender cuándo conviene uno u otro más allá de lo que he leído.
+**Si el mapeo de comportamiento colombiano es razonable.** Yo definí los rangos de referencia. Por ejemplo, consideré 1.500.000 mensuales como el extremo alto de capacidad y 24 meses como el extremo alto de constancia. Una persona experta en riesgo probablemente revisaría esos valores.
 
-**No sé cómo se hace la contabilidad de verdad.** Construí un ledger de doble
-partida porque tiene sentido y es verificable, pero no conozco las prácticas reales
-de un equipo financiero: cómo se concilia con sistemas externos, qué se reporta,
-qué se audita, qué pasa cuando alguien reclama un cobro.
+**Si el modelo tiene sesgos.** German Credit incluye edad y estado civil, y se usa en estudios sobre equidad algorítmica. No incluí esos atributos en los dos ejes, pero no medí si aparecen indirectamente por su relación con otros atributos. Esa sería una de las primeras revisiones antes de pensar en usuarios reales.
 
-**No sé operar esto.** No hay métricas, trazas ni alertas. Si el sistema empezara a
-fallar en producción no tendría forma de enterarme antes que el usuario.
+## 6. Supuestos
 
-**No sé si la extensión que elegí es la que más valor agrega.** Me convenció porque
-el enunciado apunta directo a ella, pero no hablé con nadie que tenga el problema.
+- **La autenticación es simulada.** La aplicación muestra una pantalla de acceso, pero no envía, guarda ni compara la contraseña. Solo verifica que exista el usuario. La interfaz lo indica y hay un comentario en el código donde se descarta la contraseña. Implementar hashing, sesiones y recuperación de contraseña quedaba fuera del alcance. El reto pedía un usuario con saldo; prioricé demostrar el manejo del dinero.
+- **Solo hay una moneda: COP.** Cada monto conserva su moneda y el sistema lanza una excepción si se mezclan monedas. Esto deja más clara la operación si se agrega otra moneda en el futuro.
+- **Los depósitos son simulados y siempre se completan.** No hay pasarela de pagos, como permite el enunciado.
+- **La interfaz recibe pesos enteros.** El sistema guarda centavos porque el reparto puede necesitarlos.
+- **Quien paga un gasto compartido ya cubrió su parte.** Las otras personas le transfieren a quien pagó. Una transferencia asociada al gasto solo es válida si va de un participante a esa persona.
+- **Se permite pagar de más.** El pendiente llega a cero y la aplicación muestra el excedente. Si el dinero ya se movió, el registro debe describirlo.
+- **Un gasto compartido necesita al menos dos personas.** Un gasto de una persona no se reparte y no genera deudas entre participantes.
 
-**No sé qué tan bueno es mi clasificador, y sé que no es muy bueno.** Acierta 72,9%
-contra 70,0% de predecir siempre la clase mayoritaria. Son 2,9 puntos. Comprimir 20
-atributos en dos ejes interpretables cuesta poder predictivo, y ese es el precio que
-pagué por poder explicar qué significa cada eje. No medí con validación cruzada ni
-separé conjunto de prueba, así que ese número es optimista.
+## 7. Cómo trabajé con IA
 
-**No sé si mi mapeo de comportamiento colombiano a los ejes del dataset es
-razonable.** Los rangos de referencia —que 1.500.000 mensuales sea el extremo alto
-de capacidad, que 24 meses sea el extremo alto de constancia— los elegí yo con
-criterio propio. Un analista de riesgo los miraría y probablemente los cambiaría.
+### Roles
 
-**No sé si el modelo tiene sesgos.** El German Credit contiene edad y estado civil, y
-es el dataset canónico de la literatura de equidad algorítmica justamente porque los
-tiene. Excluí esos atributos de mis dos ejes, pero no medí si se filtran por
-correlación con los que sí uso. Es lo primero que auditaría antes de que esto tocara
-a un usuario real.
+Usé dos agentes con tareas distintas:
 
-## 6. Los supuestos que hice
+- **Claude Code como arquitecto y revisor.** Decidía qué cambiar, en qué capa hacerlo, qué invariantes podían verse afectados y qué tests se necesitaban. Dejaba esas decisiones en `PLAN.md`; no implementaba.
+- **Codex CLI como implementador.** Leía el plan y lo implementaba. No debía rediseñar el alcance. Si encontraba una contradicción o una instrucción ambigua, tenía que detenerse y reportarla.
+- **Yo revisaba las decisiones de arquitectura y hacía los commits.**
 
-- **Hay pantalla de login, pero la autenticación es simulada.** La app entra por
-  un login con usuario y contraseña, porque sin puerta de entrada el producto se
-  siente a medio armar. Pero **la contraseña nunca sale del navegador**: no se
-  envía, no se guarda y no se compara. Lo único que se valida es que el usuario
-  exista. La pantalla lo declara sin letra pequeña, y hay un comentario en la
-  línea exacta donde se descarta.
+El contrato está en [`AGENTS.md`](AGENTS.md) y las reglas de implementación, en [`.agents/skills/safe-financial-implementation/`](.agents/skills/safe-financial-implementation/).
 
-  Lo digo así de explícito porque un login que *parece* real es peor que no
-  tener login: insinúa una seguridad que no existe. Autenticación de verdad
-  —hashing, sesiones, recuperación— era alcance que preferí no fingir. El reto
-  dice "un usuario con saldo"; asumí que demostrar el modelo de dinero importaba
-  más que el de identidad.
-- **Una sola moneda, COP.** Aun así, la moneda viaja con cada monto y mezclar
-  monedas distintas lanza excepción, para que agregar otra no sea una reescritura.
-- **Los depósitos son simulados y siempre exitosos.** No hay pasarela, tal como
-  permite el enunciado.
-- **Pesos enteros en la interfaz.** El sistema guarda centavos, porque un reparto
-  los produce, pero el usuario escribe pesos.
-- **En un gasto compartido, quien pagó ya cubrió su parte.** Los demás le pagan a
-  esa persona. Una transferencia ligada a un gasto solo es válida de un participante
-  hacia quien pagó.
-- **El sobrepago se permite y se muestra.** Si alguien manda de más, el pendiente
-  llega a cero y el exceso se reporta. La plata ya se movió; el sistema debe
-  describir la realidad, no negarla.
-- **Un gasto compartido necesita al menos dos personas.** Uno de una sola persona no
-  es compartido y nadie debe nada en él.
+Avancé por objetivos: primero el plan, luego la implementación, la revisión del cambio y los tests. Después hacía el commit.
 
-## 7. Cómo usé IA
+Separar los roles ayudó a detectar contradicciones. Si un mismo agente escribe el plan y lo implementa, puede pasar por alto problemas de su propia propuesta. Al pedirle al implementador que siguiera un plan escrito por otro agente, las contradicciones quedaban más visibles.
 
-### La dinámica
+Yo elegía la extensión del producto, el modelo financiero y el alcance. También decidía cuándo la arquitectura se estaba complicando demasiado. A los agentes les pedía implementar el código y revisarlo.
 
-Usé dos agentes con **roles separados a propósito**, no como asistentes
-intercambiables:
+### Errores y correcciones
 
-- **Claude Code como arquitecto y revisor.** Decide *qué* cambia, en qué capa vive,
-  qué invariantes están en riesgo y qué tests son obligatorios. Escribe eso en un
-  `PLAN.md`. No implementa.
-- **Codex CLI como implementador.** Lee el plan y lo ejecuta. No rediseña. Si algo
-  del plan está mal o es ambiguo, **se detiene y reporta** en vez de improvisar.
-- **Yo** apruebo o rechazo las decisiones arquitectónicas y hago cada commit.
+Registré tres casos en [`docs/ai-log.md`](docs/ai-log.md). El que más me enseñó fue un invariante incompleto.
 
-El contrato está en [`AGENTS.md`](AGENTS.md) y las reglas de implementación en
-[`.agents/skills/safe-financial-implementation/`](.agents/skills/safe-financial-implementation/).
-El proyecto avanzó goal por goal: plan, implementación, revisión del diff, tests
-corridos por el revisor, y recién ahí commit.
+Antes de que existiera código, le pedí a Claude que escribiera los invariantes financieros. Definió INV-1 como “los asientos de una operación suman cero”. Lo aprobé. Al planear los depósitos, detectó que acreditar solo la cuenta del usuario sumaría 50.000 en vez de cero. El invariante no cubría la primera operación que agrega dinero al sistema.
 
-Separar los roles importó más de lo que esperaba. Un solo agente haciendo todo tiende
-a escribir el plan que le conviene y después a declararse satisfecho. Con el
-implementador obligado a obedecer un plan que no escribió, cada contradicción del
-plan se vuelve visible en vez de resolverse en silencio.
+Podía dejar el depósito con un solo asiento y perder la doble partida, o crear una excepción para los depósitos. Ambas opciones debilitaban la verificación del ledger. La solución fue registrar la otra parte en `EXTERNAL_FUNDING`. Desde entonces, todos los asientos siguen sumando cero.
 
-Lo que le pedía yo: elegir la extensión del producto, decidir el modelo financiero,
-fijar el alcance, y cortar cuando la arquitectura se estaba inflando. Lo que le pedía
-a los agentes: escribir el código y atacarlo.
+Aprendí que una regla puede sonar correcta y aun así no cubrir un caso básico. Conviene probarla con ejemplos concretos, incluso con el primer depósito.
 
-### Cuando la IA se equivocó
+En otro caso, Codex se detuvo antes de implementar los gastos compartidos. El plan pedía que cada cuota fuera positiva, pero también pedía repartir un centavo entre hasta nueve personas. Eso es imposible sin dejar a alguien con cero. El agente tenía razón; el error estaba en mi plan. Decidí rechazar el gasto cuando el total es menor que el número de participantes, en vez de cambiar la regla de las cuotas.
 
-Tengo tres casos registrados con fecha en [`docs/ai-log.md`](docs/ai-log.md). El que
-más me enseñó:
+El tercer caso cambió cómo cierro el trabajo. Codex marcó un objetivo como “Implemented”, aunque no había podido ejecutar ningún test. Más adelante explicaba que su entorno no tenía Docker ni red. La diferencia entre el titular y la evidencia podía pasar inadvertida. Ahora ningún objetivo se cierra con pruebas ejecutadas por el mismo agente que escribió el código: yo corro los tests.
 
-**El invariante que se violaba a sí mismo.** Le pedí a Claude que escribiera los
-invariantes financieros antes de existir código. Escribió INV-1 así: *"los asientos
-de una operación suman cero"*. Suena obviamente correcto y lo aprobé sin objetar.
+### Qué aprendí al usar IA
 
-Dos pasos después, planeando los depósitos, el mismo agente detectó el problema: un
-depósito mete plata desde afuera, así que si solo acreditas la cuenta del usuario,
-los asientos suman 50.000, no cero. **El invariante que había declarado
-no-negociable era violado por la primera operación monetaria del sistema.**
-
-Si no lo agarro, hay dos salidas y las dos son malas. O el depósito se implementa
-como asiento de una sola pata —y ahí el ledger deja de ser de doble partida y la
-frase "no pierdo un peso" pierde su respaldo— o se mete una excepción del tipo "los
-depósitos no cuentan para la conservación", que es justo el tipo de excepción que
-después se copia a otra operación y termina escondiendo un bug real.
-
-La solución fue la cuenta `EXTERNAL_FUNDING`. Y es la razón de que hoy la
-conservación no tenga excepciones.
-
-Lo que me llevo: **la IA es muy buena escribiendo reglas que suenan rigurosas y muy
-mala notando que su propia regla no cubre un caso que todavía no ha visto.** Las
-reglas abstractas no se validan leyéndolas — se validan corriéndolas contra el caso
-más aburrido que exista. Acá el caso aburrido era "el primer depósito".
-
-**El segundo caso es casi el inverso, y por eso lo dejo:** Codex se negó a
-implementar los gastos compartidos. Reportó que mi plan pedía dos cosas
-incompatibles —que toda cuota fuera positiva, y un test que repartiera totales desde
-1 centavo entre hasta 9 participantes— porque repartir 1 peso entre 3 personas
-obliga a que alguien quede en cero. **Tenía razón, y el error era mío.** Un agente
-optimizando por terminar la tarea habría permitido cuotas de cero en silencio: el
-sistema compila, los tests pasan, y queda una violación de invariante enterrada en
-la operación que reparte plata entre personas.
-
-Lo resolví rechazando la entrada en vez de debilitar la regla: un gasto cuyo total es
-menor que su número de participantes devuelve 400.
-
-Y el tercero, el que me hizo cambiar cómo trabajo: **Codex reportó un goal como
-"Implemented" cuando no había podido correr un solo test.** El titular decía "todos
-los archivos creados, los cuatro tests existen"; tres secciones más abajo decía que
-su entorno no tenía Docker ni red y que nada se había ejecutado. Fue honesto, pero
-la información que contradecía el titular estaba donde uno ya dejó de leer. Desde
-ahí la regla del proyecto es que **ningún goal se cierra con evidencia producida por
-el mismo agente que escribió el código**: los tests los corro yo.
+La IA puede ayudar a escribir código y a detectar problemas, pero el resultado necesita verificación. En este proyecto, las reglas explícitas hicieron más fácil encontrar contradicciones. En los tres casos registrados, un agente encontró un problema al chocar con una regla escrita, y dos de esos problemas los había introducido yo.
 
 ## 8. Qué aprendí
 
-**Que el ledger de doble partida no es burocracia contable, es una estructura de
-datos que hace verificable una propiedad.** Yo lo conocía como concepto de
-contabilidad. Entender que convierte "¿perdí plata?" —una pregunta difusa— en
-`SELECT SUM(...) = 0` fue lo que más me cambió la cabeza en este reto.
+**El ledger de doble partida permite verificar una propiedad.** Antes lo relacionaba principalmente con la contabilidad. En este reto entendí que convierte “¿se perdió dinero?” en una consulta concreta: comprobar que la suma sea cero.
 
-**Que el patrón intuitivo de idempotencia está roto.** Yo habría escrito "consulta
-si la llave existe, si no, inserta" sin pensarlo dos veces. Que dos reintentos
-concurrentes atraviesen ese chequeo es obvio cuando te lo dicen y completamente
-invisible cuando lo escribes. Aprender a delegar la unicidad al motor en vez de
-intentar coordinarla desde la aplicación fue la lección técnica más útil.
+**La idempotencia depende de la base de datos.** Al principio habría consultado si una llave existía y luego la habría insertado. Dos solicitudes simultáneas pueden pasar esa consulta antes de que se guarde la primera. La restricción de unicidad de la base resuelve ese caso.
 
-**Que el orden en que tomas los locks es una decisión de diseño.** No sabía que el
-deadlock se evita eligiendo un orden global arbitrario pero consistente. Es una idea
-simple y me pareció preciosa: no necesitas coordinación, solo que todos ordenen por
-el mismo criterio.
+**El orden de los bloqueos evita deadlocks.** Si todas las operaciones bloquean las cuentas con el mismo criterio, no importa quién envía el dinero: todas esperan en el mismo orden.
 
-**Lo que más me sorprendió: que los tests que valen son los que prueban que algo
-*no* pasó.** El test que más me costó escribir es el que rompe a propósito el
-actualizador de gastos y verifica que la transferencia queda bien igual. No prueba
-una funcionalidad; prueba que un fallo *no* se propaga. Y es lo único que justifica
-que ahí haya un evento en vez de una llamada directa. Sin ese test, el patrón sería
-decoración — y creo que eso aplica a casi cualquier patrón.
+**Las pruebas también pueden comprobar que un fallo no se propague.** Una prueba provoca un error al actualizar un gasto y verifica que la transferencia siga registrada correctamente. Esa prueba comprueba que el evento tiene una razón concreta; sin ella, la separación sería más difícil de justificar.
 
-**Que un modelo de difusión es mucho más simple de lo que su reputación sugiere.**
-Lo había visto siempre como algo de imágenes y GPUs. Escribirlo desde cero —agregar
-ruido, aprender a predecirlo, y caminar la cadena al revés— son unas 150 líneas, y
-entender que el modelo aprende *la variedad donde viven los datos* fue lo que me
-hizo ver para qué sirve aquí: no para predecir, sino para que una recomendación
-caiga sobre gente que podría existir.
+**Un modelo de difusión puede ser pequeño.** Lo relacionaba con imágenes y GPU. En este caso, el modelo consiste en agregar ruido, aprender a predecirlo y recorrer el proceso al revés. Lo útil es que aprende la forma de los datos. Aquí lo uso para que las rutas se mantengan cerca de perfiles posibles, no para hacer una predicción de crédito.
 
-**Que derivar la retropropagación a mano enseña más que usar un framework.** Tuve
-que escribir la derivada de cada capa. La primera versión estaba mal y lo supe
-porque el modelo no reproducía las dos medialunas, no porque el código se viera
-raro. Esa es la lección: el test contra una distribución conocida es lo que hace
-verificable algo que de otro modo es fe.
+**Derivar la retropropagación ayuda a entender el modelo.** Escribí la derivada de cada capa. La primera versión estaba mal y lo detecté porque el modelo no reprodujo las dos medialunas. Comparar el resultado con una distribución conocida permitió comprobar el comportamiento, no solo leer el código.
 
-**Sobre trabajar con IA:** que el valor no está en que escriba código rápido, sino en
-poner restricciones tan explícitas que las contradicciones salgan a la superficie.
-Las tres veces que este flujo me salvó de un error, fue porque un agente chocó
-contra una regla escrita — no porque fuera listo. Y las tres veces, dos de los
-errores eran míos.
+**La IA necesita límites claros y revisión.** En este proyecto, los agentes fueron más útiles cuando sus responsabilidades y las reglas estaban escritas. Eso ayudó a que aparecieran las contradicciones, pero no reemplazó mi revisión ni la ejecución de los tests.
 
----
+## Estructura del proyecto
 
-## Estructura
-
-```
+```text
 backend/
-  src/domain/          Money, Account, LedgerEntry, split, eventos, perfil
-                       crediticio. Python puro, sin Django y sin numpy.
-  src/application/     Commands, servicios, facade. Dueño del límite transaccional.
-  src/infrastructure/  ORM, repositorios, migraciones. Único lugar con FOR UPDATE.
-                       Y credit/: el modelo de difusión y su artefacto.
-  src/presentation/    Controladores y serializers. Sin reglas de negocio.
-  scripts/             Entrenamiento del modelo y siembra de datos de demo.
-                       Se corren a mano, nunca en el camino de un request.
-  data/                UCI German Credit, tal como se descarga.
-frontend/src/          Seis pantallas + tokens de tema.
-docs/                  Decisiones de arquitectura, bitácora de IA, goals, demo.
+  src/domain/          Money, Account, LedgerEntry, reparto, eventos y perfil crediticio.
+                       Python puro, sin Django ni NumPy.
+  src/application/     Comandos, servicios y facade. Controla las transacciones.
+  src/infrastructure/  ORM, repositorios y migraciones. Único lugar que usa FOR UPDATE.
+                       Incluye credit/, el modelo de difusión y su artefacto.
+  src/presentation/    Controladores y serializers. No contiene reglas de negocio.
+  scripts/             Entrenamiento del modelo y carga de datos de demo.
+                       Se ejecutan manualmente, fuera de las solicitudes.
+  data/                Conjunto UCI German Credit tal como se descarga.
+frontend/src/           Seis pantallas y tokens de tema.
+docs/                   Decisiones de arquitectura, registro de IA, objetivos y demo.
 ```
 
-Las dependencias apuntan hacia adentro. Un test recorre `src/domain/` y falla si
-alguien importa Django ahí, así que la regla de capas rompe el build en vez de
-erosionarse.
+Las dependencias apuntan hacia las capas internas. Un test recorre `src/domain/` y falla si encuentra una importación de Django. Así, una dependencia prohibida rompe el build en lugar de quedar como una regla informal.
 
-**Documentos:**
-[decisiones de arquitectura y patrones](docs/architecture-decisions.md) ·
-[bitácora de trabajo con IA](docs/ai-log.md) ·
-[seguimiento de los goals](docs/GOALS.md) ·
-[contrato entre agentes](AGENTS.md)
+**Documentos relacionados:**
+
+- [Decisiones de arquitectura y patrones](docs/architecture-decisions.md)
+- [Registro del trabajo con IA](docs/ai-log.md)
+- [Seguimiento de los objetivos](docs/GOALS.md)
+- [Contrato entre agentes](AGENTS.md)
