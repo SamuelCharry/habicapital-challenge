@@ -14,7 +14,7 @@ if not SECRET_KEY:
 ALLOWED_HOSTS = os.environ.get(
     "DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,[::1]"
 ).split(",")
-INSTALLED_APPS = ["rest_framework", "corsheaders"]
+INSTALLED_APPS = ["rest_framework", "corsheaders", "src.infrastructure.persistence.PersistenceConfig"]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",

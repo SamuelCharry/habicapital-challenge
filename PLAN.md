@@ -1,249 +1,297 @@
-# PLAN — GOAL 0: Project foundation
+# PLAN — GOAL 1: Money, Account, Ledger, Deposit
 
 Status: awaiting implementation by Codex.
 
+Previous goal (GOAL 0 — foundation) is closed and committed. Build on it.
+
 ## Goal
 
-Stand up the minimum executable skeleton for the wallet: a Django + DRF
-backend talking to PostgreSQL, a React + TypeScript frontend, a pytest
-suite that runs against a real PostgreSQL instance, Docker Compose to
-run all three locally, and a GitHub Actions workflow that executes both
-test suites. The only endpoint is a health check that proves the
-database connection is live. No money, no accounts, no domain logic.
+Introduce money into the system. After this goal the API can create an
+account, load simulated balance into it, report its balance, and list its
+movements — four of the five mandatory features of the challenge. Transfers
+between user accounts are **not** part of this goal.
 
-The foundation also locks in three framework-level settings that later
-financial correctness depends on, so they are decided once, here, rather
-than discovered during GOAL 3.
+The ledger model established here is what every later financial operation
+sits on, so it is built correctly now rather than retrofitted.
 
 ## Affected components
 
-Everything is new. Nothing existing is modified except `README.md`.
+**New — domain (pure Python, no Django import anywhere)**
 
-**Repository root**
+- `backend/src/domain/__init__.py`
+- `backend/src/domain/money.py` — `Money` value object
+- `backend/src/domain/entities.py` — `Account`, `LedgerEntry`
+- `backend/src/domain/factories.py` — `LedgerEntryFactory`
+- `backend/src/domain/errors.py` — domain exceptions
+- `backend/src/domain/repositories.py` — repository interfaces (ABCs)
 
-- `.env.example`
-- `docker-compose.yml`
-- `.github/workflows/ci.yml`
-- `README.md` — replace the "Setup" placeholder with real instructions
+**New — application**
 
-**backend/** (presentation + config only; other layers are not created yet)
+- `backend/src/application/__init__.py`
+- `backend/src/application/commands.py` — `CreateAccountCommand`, `DepositCommand`
+- `backend/src/application/services.py` — `AccountService`, `DepositService`
+- `backend/src/application/facade.py` — `WalletFacade`
 
-- `backend/manage.py`
-- `backend/requirements.txt`
-- `backend/requirements-dev.txt`
-- `backend/pytest.ini`
-- `backend/Dockerfile`
-- `backend/config/__init__.py`
-- `backend/config/settings.py`
-- `backend/config/urls.py`
-- `backend/config/wsgi.py`
-- `backend/config/asgi.py`
-- `backend/src/__init__.py`
-- `backend/src/presentation/__init__.py`
-- `backend/src/presentation/controllers/__init__.py`
-- `backend/src/presentation/controllers/health.py`
-- `backend/tests/__init__.py`
-- `backend/tests/test_health.py`
+**New — infrastructure**
 
-**frontend/**
+- `backend/src/infrastructure/__init__.py`
+- `backend/src/infrastructure/persistence/__init__.py` — Django app config
+- `backend/src/infrastructure/persistence/models.py` — `AccountModel`, `LedgerEntryModel`
+- `backend/src/infrastructure/persistence/repositories.py` — Django implementations
+- `backend/src/infrastructure/persistence/migrations/` — generated
+- `backend/src/infrastructure/container.py` — wires the facade
 
-- `frontend/package.json`
-- `frontend/tsconfig.json`, `frontend/tsconfig.node.json`
-- `frontend/vite.config.ts`
-- `frontend/index.html`
-- `frontend/Dockerfile`
-- `frontend/.env.example`
-- `frontend/src/main.tsx`
-- `frontend/src/App.tsx`
-- `frontend/src/api/client.ts`
-- `frontend/src/theme/tokens.css`
-- `frontend/src/index.css`
+**New — presentation**
+
+- `backend/src/presentation/controllers/accounts.py`
+- `backend/src/presentation/serializers.py`
+
+**New — tests**
+
+- `backend/tests/domain/test_money.py`
+- `backend/tests/domain/test_ledger_factory.py`
+- `backend/tests/application/test_deposit_service.py` (fake repositories, no DB)
+- `backend/tests/integration/test_accounts_api.py`
+- `backend/tests/integration/test_conservation.py`
+
+**Modified**
+
+- `backend/config/settings.py` — register the persistence app
+- `backend/config/urls.py` — mount account routes
+- `frontend/package-lock.json` — commit it (see Decisions)
+- `.github/workflows/ci.yml` — `npm ci` instead of `npm install`
 
 ## Layer assignment
 
 | Unit | Layer | Why |
 |---|---|---|
-| `config/*` | infrastructure (config) | Django wiring, settings, URL root. Framework concern, nothing else. |
-| `src/presentation/controllers/health.py` | presentation | An HTTP endpoint. It performs one trivial DB liveness query and returns a status document. It has no business meaning, so it needs no layer beneath it. |
-| `src/api/client.ts` | frontend infrastructure | Single place that knows the backend base URL and error shape. |
-| `tests/test_health.py` | tests | Integration test; touches the real database. |
+| `Money`, `Account`, `LedgerEntry` | domain | Rules that hold regardless of storage. |
+| `LedgerEntryFactory` | domain | Creating entries carries invariants; creation must be controlled. |
+| Repository ABCs | domain | The domain declares what it needs; infrastructure supplies it. |
+| Commands, services, `WalletFacade` | application | Orchestration and the transaction boundary. |
+| Django models, repository impls | infrastructure | The only place the ORM exists. |
+| Controllers, serializers | presentation | Request shape in, HTTP out. No business rules. |
 
-`domain/`, `application/`, and `infrastructure/persistence/` are **not**
-created in this goal. They appear in GOAL 1 when there is something real
-to put in them. Do not create empty packages in anticipation.
+`domain/` must not import `django`, `rest_framework`, or anything from
+`infrastructure/`. This is checked by a test.
 
 ## Patterns
 
-None are introduced. This goal is plumbing.
+Four patterns enter the codebase here. Each must earn its place.
 
-The health endpoint is deliberately *not* routed through a facade, a
-command, or a repository. Doing so would be the first instance of
-pattern theater this project is explicitly trying to avoid. A liveness
-probe has no domain behavior to protect.
+**Repository** — application code depends on `AccountRepository` and
+`LedgerRepository` abstract base classes. It never touches a queryset. This
+is what makes `DepositService` testable without a database, which the
+application test proves.
 
-Layered architecture and the presentation/business separation exist
-structurally from this point on and are enforced from GOAL 1 forward.
+**Command** — `CreateAccountCommand` and `DepositCommand` are frozen
+dataclasses carrying validated business input. They make the operation's
+inputs explicit instead of passing loose arguments.
+
+**Factory** — `LedgerEntryFactory.for_deposit(...)` returns the *pair* of
+entries for a deposit. Its reason to exist: it is impossible to obtain a
+single unbalanced entry through it. Callers cannot write a one-sided entry
+because the factory never returns one.
+
+**Facade** — `WalletFacade` is the single entry point the presentation layer
+calls. It coordinates; it holds no business rules.
+
+Dependency injection: services receive repositories through their
+constructor. `container.py` does the wiring. Do **not** introduce a DI
+framework, and do not make anything a singleton.
+
+Not used in this goal: Strategy (nothing varies yet), Observer (no side
+effects yet). Do not add them speculatively.
 
 ## Invariants at risk
 
-No `INV-*` invariant is exercised by this goal — there is no money in
-the system yet. Stating that plainly is more honest than manufacturing
-citations.
-
-However, three settings decided here determine whether INV-3, INV-4 and
-INV-5 are *achievable* later, and getting them wrong is expensive to
-undo:
-
-- **`ATOMIC_REQUESTS = False`** — relates to INV-4 (atomicity). Django's
-  `ATOMIC_REQUESTS = True` wraps every HTTP request in a transaction,
-  which moves the transaction boundary into the presentation layer and
-  directly contradicts `references/architecture.md` ("exactly one place
-  opens the transaction: the application use case"). It must be off, and
-  the setting must carry a comment saying why.
-- **Isolation level `READ COMMITTED`** (PostgreSQL default, set
-  explicitly) — relates to INV-3 (sufficient funds). Our concurrency
-  strategy is pessimistic row locking via `SELECT ... FOR UPDATE`, which
-  is correct under READ COMMITTED. Setting it explicitly documents that
-  we are relying on locks, not on serializable retries.
-- **Tests run on PostgreSQL, never SQLite** — relates to INV-3 and
-  INV-5. SQLite silently ignores `select_for_update` and has different
-  unique-constraint and concurrency semantics. A green suite on SQLite
-  would be evidence of nothing.
+- **INV-1 (conservation, global).** A deposit must write two entries:
+  `-amount` against `EXTERNAL_FUNDING` and `+amount` against the target
+  account. A one-sided deposit breaks conservation permanently and silently.
+- **INV-2 (positive amounts).** Rejected in the domain, not only in the
+  serializer, so a second entry point cannot bypass it.
+- **INV-6 (precision).** `Money` holds `amount_minor: int`. No float may
+  appear on any money path, including JSON parsing and serialization.
+- **INV-7 (immutable history).** Ledger entries are append-only. The
+  repository exposes no update or delete for entries.
+- **INV-3 (sufficient funds).** Not exercised yet — deposits only add. But
+  `EXTERNAL_FUNDING` must already be modelled as the one account allowed to
+  go negative, because GOAL 2 depends on that distinction existing.
+- **INV-10 (reconcilable balance).** Satisfied by construction: balance is
+  `SUM(entries)`, there is no cached column.
 
 ## Decisions
 
-Codex implements these as given and does not relitigate them.
-
-1. **Money representation is deferred to GOAL 1.** Do not add a `Money`
-   type, a currency field, or a decimal setting in this goal. The
-   representation is already decided (integer minor units of COP, never
-   float) but it belongs to the domain layer, which this goal does not
-   create.
-2. **PostgreSQL 17** via the official image, owned by Docker Compose.
-   Chosen for ACID transactions, row-level locking, and real constraint
-   enforcement — the properties the financial core depends on. This is
-   our justification, not a claim about HabiCapital's internal stack.
-3. **Python 3.12, Django 5.2 LTS, DRF 3.15+, psycopg 3** (`psycopg[binary]`,
-   not `psycopg2`). LTS for the framework; psycopg 3 is the supported
-   driver for new Django projects.
-4. **Config via environment variables**, read in `settings.py` with
-   explicit defaults for local development only. `.env.example` is
-   committed; `.env` is git-ignored. No secrets in the repository.
-   `DJANGO_SECRET_KEY` has no production-safe default — if it is missing
-   and `DEBUG` is false, startup fails loudly.
-5. **`backend/src/` is a plain Python package, not a Django app.** The
-   Django project lives in `backend/config/`. `src` holds our
-   architecture. Django apps are registered later, in GOAL 1, only for
-   the ORM models that need migrations
-   (`src.infrastructure.persistence`). The health controller is a plain
-   DRF `APIView` referenced from `config/urls.py` and needs no app.
-6. **Frontend toolchain mirrors `daily-fitness-platform`**: Vite, React
-   19, TypeScript, `react-router-dom`, `oxlint`, plain CSS with custom
-   properties in a `theme/` directory. No Tailwind, no component
-   library. Rationale: Samuel has to defend this code live in a pairing
-   session, and reusing a toolchain he already operates is worth more
-   than a marginally nicer one he does not.
-7. **Two CI jobs, not one**: `backend` (with a PostgreSQL service
-   container) and `frontend`. They are independent and should fail
-   independently.
-8. **Frontend styling in this goal is minimal but not ugly.** Define the
-   colour tokens (purple / teal / neutral), the type scale, radius and
-   spacing scale in `theme/tokens.css` now, because every later screen
-   consumes them. Do not build components yet.
+1. **`Money`** is a frozen dataclass: `amount_minor: int`, `currency: str`
+   (only `"COP"`). Arithmetic between different currencies raises. No
+   `__float__`. Construction from a decimal string is explicit; there is no
+   implicit float path.
+2. **`EXTERNAL_FUNDING`** is a real row in the accounts table with a
+   reserved identifier, created by a data migration so it always exists. It
+   is the only account with `allows_negative_balance = True`. It is never
+   returned by the public account-listing endpoint.
+3. **Balance is always computed** as `SUM(ledger_entries.amount_minor)`. No
+   balance column on `AccountModel`.
+4. **Every ledger entry belongs to an operation.** `LedgerEntryModel` has an
+   `operation_id` (UUID) grouping the entries written together, and an
+   `operation_type` (`"deposit"` for now). This is what makes per-operation
+   conservation checkable, and GOAL 2 reuses it for transfers.
+5. **The deposit transaction boundary is in `DepositService`**, using
+   `django.db.transaction.atomic`. Not in the view, not in the repository.
+6. **Amounts cross the API as integer minor units** in a field named
+   `amount_minor`, plus a `currency` field. No decimal strings, no floats, in
+   either direction. The frontend formats for display; the API does not.
+7. **Commit `frontend/package-lock.json`** and switch CI to `npm ci`. A
+   financial application should build from a pinned dependency tree. This is
+   carried-over debt from GOAL 0.
 
 ## Interfaces
 
-**`GET /api/health/`**
+Domain:
 
-```
-200 OK
-{
-  "status": "ok",
-  "database": "ok",
-  "version": "<string>"
-}
-```
-
-```
-503 Service Unavailable
-{
-  "status": "degraded",
-  "database": "unavailable",
-  "version": "<string>"
-}
+```python
+@dataclass(frozen=True)
+class Money:
+    amount_minor: int
+    currency: str = "COP"
+    def add(self, other: "Money") -> "Money": ...
+    def negated(self) -> "Money": ...
+    @property
+    def is_positive(self) -> bool: ...
 ```
 
-The database check executes `SELECT 1` through Django's default
-connection. A driver exception is caught and mapped to the 503 body — it
-must not surface as an unhandled 500.
+```python
+class AccountRepository(ABC):
+    def add(self, account: Account) -> Account: ...
+    def get(self, account_id: UUID) -> Account: ...          # raises AccountNotFound
+    def get_by_handle(self, handle: str) -> Account: ...
+    def list_user_accounts(self) -> list[Account]: ...        # excludes EXTERNAL_FUNDING
+    def balance_of(self, account_id: UUID) -> Money: ...
 
-**`frontend/src/api/client.ts`**
-
-```ts
-export type HealthResponse = {
-  status: "ok" | "degraded";
-  database: "ok" | "unavailable";
-  version: string;
-};
-
-export function getHealth(): Promise<HealthResponse>;
+class LedgerRepository(ABC):
+    def append(self, entries: Sequence[LedgerEntry]) -> None: ...   # all-or-nothing
+    def entries_for(self, account_id: UUID) -> list[LedgerEntry]: ...
+    def total_balance(self) -> Money: ...                            # must be zero
 ```
 
-Base URL comes from `import.meta.env.VITE_API_BASE_URL`, defaulting to
-`http://localhost:8000`.
+HTTP:
+
+```
+POST /api/accounts/            {"handle": "samuel", "display_name": "Samuel"}
+  201 {"id", "handle", "display_name", "balance_minor", "currency"}
+  400 on duplicate handle or invalid shape
+
+GET  /api/accounts/            200 [ ...accounts... ]   (excludes EXTERNAL_FUNDING)
+GET  /api/accounts/{id}/       200 {...}  | 404
+GET  /api/accounts/{id}/balance/  200 {"balance_minor": 5000000, "currency": "COP"}
+GET  /api/accounts/{id}/history/  200 [{"operation_id","operation_type","amount_minor",
+                                        "currency","created_at","counterparty_handle"}]
+
+POST /api/accounts/{id}/deposits/  {"amount_minor": 5000000, "currency": "COP"}
+  201 {"operation_id", "balance_minor", "currency"}
+  400 if amount_minor <= 0
+  404 if account does not exist
+```
+
+`handle` is unique, lowercase, `^[a-z0-9_]{3,20}$`.
 
 ## Required tests
 
-Backend, in `backend/tests/test_health.py`:
+Domain (no database):
 
-1. `test_health_returns_ok_when_database_reachable` — 200 and
-   `status == "ok"`. Defends the acceptance criterion that the backend
-   genuinely reaches PostgreSQL, rather than merely booting.
-2. `test_health_reports_degraded_when_database_unavailable` — patch the
-   connection so `SELECT 1` raises; assert 503 and
-   `database == "unavailable"`. Defends the failure mode of a health
-   probe that lies, or that leaks a 500.
-3. `test_settings_do_not_wrap_requests_in_transactions` — assert
-   `connections["default"].settings_dict["ATOMIC_REQUESTS"] is False`.
-   This is a guard test for the INV-4 decision above: it fails loudly if
-   someone later flips `ATOMIC_REQUESTS` on and quietly relocates the
-   transaction boundary into the presentation layer.
-4. `test_test_database_is_postgresql` — assert the engine in use is
-   `django.db.backends.postgresql`. Guards the INV-3 / INV-5 decision
-   that the suite must never silently fall back to SQLite.
+1. `test_money_rejects_float_construction` — INV-6.
+2. `test_money_addition_across_currencies_raises` — INV-6.
+3. `test_money_is_positive_boundary` — zero is not positive. INV-2.
+4. `test_deposit_factory_returns_balanced_pair` — the two entries sum to
+   zero and share one `operation_id`. INV-1.
+5. `test_deposit_factory_rejects_non_positive_amount` — INV-2.
 
-Frontend: no unit tests in this goal. `tsc -b` must pass and the
-production build must succeed; that is the frontend gate for GOAL 0.
-A test runner is introduced in GOAL 6 when there are components worth
-testing.
+Application (fake in-memory repositories, no Django):
+
+6. `test_deposit_service_appends_both_entries` — proves the service works
+   without a database, which is the point of the Repository abstraction.
+7. `test_deposit_service_rejects_unknown_account`.
+
+Integration (real PostgreSQL):
+
+8. `test_create_account_and_read_balance` — new account starts at zero.
+9. `test_duplicate_handle_is_rejected` — DB unique constraint, not a
+   pre-check.
+10. `test_deposit_increases_balance_and_history`.
+11. `test_deposit_rejects_zero_and_negative` — INV-2.
+12. `test_global_ledger_sums_to_zero_after_deposits` — INV-1, the headline
+    check: after a sequence of deposits, `SUM` over the whole ledger is
+    exactly `0`.
+13. `test_external_funding_is_negative_and_hidden` — funding balance equals
+    minus the total deposited, and it never appears in `GET /api/accounts/`.
+14. `test_ledger_entries_cannot_be_modified` — INV-7.
+
+Architecture guard:
+
+15. `test_domain_does_not_import_django` — walk `src/domain/**.py` and assert
+    no module imports `django`, `rest_framework`, or `src.infrastructure`.
 
 ## Acceptance criteria
 
-1. `docker compose up` brings up `db`, `backend` and `frontend` with no
-   manual steps beyond copying `.env.example` to `.env`.
-2. `curl http://localhost:8000/api/health/` returns 200 with
-   `"database": "ok"`.
-3. The frontend at `http://localhost:5173` renders a page that displays
-   the live backend status fetched from the API — not a hardcoded value.
-4. `pytest` from `backend/` runs the four tests above and they pass
-   against PostgreSQL.
-5. `npm run build` succeeds from `frontend/` with no TypeScript errors.
-6. The CI workflow runs both jobs on push and on pull request, and both
-   pass on a clean checkout.
-7. `backend/src/` contains only `presentation/`. No empty `domain/`,
-   `application/` or `infrastructure/` packages exist.
-8. No secret value is committed. `.env` is git-ignored.
+1. All tests above pass against PostgreSQL. No SQLite.
+2. `grep -rn "float" backend/src` returns nothing on a money path.
+3. `backend/src/domain/` contains no Django import, enforced by test 15.
+4. Creating an account, depositing, reading balance and reading history all
+   work through real HTTP calls.
+5. After any sequence of deposits, total ledger sum is exactly zero.
+6. `frontend/package-lock.json` is committed and CI uses `npm ci`.
+7. Migrations exist and apply cleanly to an empty database.
 
 ## Out of scope
 
-Deliberately not touched in this goal:
+- transfers between user accounts (GOAL 2)
+- idempotency keys and row locking (GOAL 2 — do not add them now)
+- shared expenses, split strategies, domain events (GOAL 3)
+- authentication, permissions, users beyond `handle` + `display_name`
+- frontend changes beyond the committed lockfile (GOAL 4)
+- withdrawals, reversals, fees, multi-currency
 
-- accounts, balances, ledger, transfers, shared expenses — any money
-- the `Money` value object and the minor-units vs `Decimal` decision
-- authentication, users, sessions, permissions
-- repositories, facades, commands, domain events, strategies
-- database models and migrations of any kind
-- the design-pattern documentation file (starts in GOAL 1, when the
-  first pattern is actually used)
-- README challenge answers (GOAL 9)
-- frontend pages, routing beyond a single route, and components
+---
+
+## FIX — review round 1
+
+The goal is functionally correct and all 51 tests pass. Two changes before it
+closes. Change nothing else.
+
+### FIX-1 — Replace the raw SQL insert in the ledger repository
+
+`DjangoLedgerRepository.append` builds an INSERT statement by concatenating
+placeholder groups and passing a flattened parameter list. It is correct and
+properly parameterized, but it is the single most important write path in the
+system and it is the least readable code in the repository.
+
+Replace it with `LedgerEntryModel.objects.bulk_create([...])`, which issues
+the same single INSERT for the pair. Keep the `connection.in_atomic_block`
+guard exactly as it is — that guard is the reason the repository cannot open
+its own transaction, and it must survive this change.
+
+Reason: this code has to be explained out loud and modified live during a
+pair-programming interview. Hand-built SQL where the ORM does the same thing
+in one line costs explanation budget and buys nothing.
+
+### FIX-2 — Remove the N+1 in account history
+
+`AccountService.history` calls `self.accounts.get(...)` once per ledger entry
+to resolve the counterparty handle. Add a repository method that resolves the
+handles for a set of account ids in one query, and use it.
+
+Suggested signature on `AccountRepository`:
+
+```python
+def handles_for(self, account_ids: Iterable[UUID]) -> dict[UUID, str]: ...
+```
+
+Do not add caching. Do not change the HTTP response shape.
+
+### Required for this fix
+
+- The full suite still passes against PostgreSQL, unchanged in count and
+  behaviour.
+- Add one test asserting that reading the history of an account with several
+  entries issues a bounded number of queries, using
+  `django.test.utils.CaptureQueriesContext`. It must fail if the N+1 returns.
