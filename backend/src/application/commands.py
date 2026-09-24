@@ -31,6 +31,7 @@ class TransferCommand:
     destination_account_id: UUID
     amount: Money
     idempotency_key: str
+    shared_expense_id: UUID | None = None
 
     def __post_init__(self):
         if not isinstance(self.source_account_id, UUID) or not isinstance(self.destination_account_id, UUID):
@@ -39,3 +40,26 @@ class TransferCommand:
             raise InvalidTransfer("A positive amount within the supported entry size is required.")
         if not isinstance(self.idempotency_key, str) or not 8 <= len(self.idempotency_key) <= 128:
             raise InvalidTransfer("An idempotency key of 8-128 characters is required.")
+        if self.shared_expense_id is not None and not isinstance(self.shared_expense_id, UUID):
+            raise InvalidTransfer('A valid shared expense ID is required.')
+
+
+@dataclass(frozen=True)
+class CreateSharedExpenseCommand:
+    title: str
+    total: Money
+    payer_account_id: UUID
+    participant_account_ids: tuple[UUID, ...]
+    split: str = 'equal'
+
+    def __post_init__(self):
+        from src.domain.errors import InvalidSharedExpense
+
+        if self.split != 'equal':
+            raise InvalidSharedExpense('Only equal splitting is supported.')
+        if (not isinstance(self.payer_account_id, UUID)
+                or not self.participant_account_ids
+                or any(not isinstance(i, UUID) for i in self.participant_account_ids)
+                or len(set(self.participant_account_ids)) != len(self.participant_account_ids)
+                or self.payer_account_id not in self.participant_account_ids):
+            raise InvalidSharedExpense('Distinct participant IDs including the payer are required.')

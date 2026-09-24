@@ -49,9 +49,38 @@ class TransferOperationModel(models.Model):
     source_balance_minor = models.DecimalField(max_digits=40, decimal_places=0, null=True)
     destination_balance_minor = models.DecimalField(max_digits=40, decimal_places=0, null=True)
     currency = models.CharField(max_length=3, default="COP")
+    shared_expense = models.ForeignKey('SharedExpenseModel', null=True, blank=True, on_delete=models.PROTECT, related_name='transfers')
 
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=["idempotency_key"], name="transfer_idempotency_key_unique"),
             models.CheckConstraint(condition=models.Q(currency="COP"), name="transfer_currency_cop"),
+        ]
+
+
+class SharedExpenseModel(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    title = models.CharField(max_length=200)
+    total_minor = models.BigIntegerField()
+    currency = models.CharField(max_length=3)
+    payer = models.ForeignKey(AccountModel, on_delete=models.PROTECT, related_name='paid_expenses')
+
+    class Meta:
+        ordering = ['id']
+        constraints = [
+            models.CheckConstraint(condition=models.Q(total_minor__gt=0), name='expense_positive_total'),
+            models.CheckConstraint(condition=models.Q(currency='COP'), name='expense_currency_cop'),
+        ]
+
+
+class ParticipantModel(models.Model):
+    expense = models.ForeignKey(SharedExpenseModel, on_delete=models.PROTECT, related_name='participants')
+    account = models.ForeignKey(AccountModel, on_delete=models.PROTECT, related_name='expense_participations')
+    share_minor = models.BigIntegerField()
+
+    class Meta:
+        ordering = ['account_id']
+        constraints = [
+            models.UniqueConstraint(fields=['expense', 'account'], name='expense_participant_unique'),
+            models.CheckConstraint(condition=models.Q(share_minor__gt=0), name='participant_positive_share'),
         ]

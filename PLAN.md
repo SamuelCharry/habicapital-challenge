@@ -1,257 +1,220 @@
-# PLAN — GOAL 2: Safe transfers
+# PLAN — GOAL 4: Frontend MVP
 
 Status: awaiting implementation by Codex.
 
-GOAL 0 and GOAL 1 are closed and committed. Build on them.
-
-This is the most important goal in the project. The challenge's single
-non-negotiable rule is that the system cannot lose a peso, and transfers are
-where money can actually be lost. Correctness here outranks everything else,
-including finishing quickly.
+GOAL 0–3 are closed. The backend is complete: accounts, deposits, transfers
+and shared expenses all work and are tested.
 
 ## Goal
 
-Move money between two user accounts, safely, under concurrency, with
-idempotent retries. This completes the fifth and last mandatory feature of
-the challenge core.
+A frontend that makes the product's idea obvious in thirty seconds: money
+that carries context. Five screens, connected to the real API, good enough to
+demo on video and defend in a pairing session.
 
-A transfer either happens exactly once and completely, or it does not happen
-at all and leaves no trace. There is no third outcome.
+The bar is "a coherent fintech product", not an admin panel. But scope
+discipline matters more than polish: five screens, no more.
 
 ## Affected components
 
-**Domain**
+All under `frontend/`. The backend is **not** modified in this goal.
 
-- `backend/src/domain/factories.py` — add `LedgerEntryFactory.for_transfer(...)`
-- `backend/src/domain/errors.py` — add `InsufficientFunds`, `SameAccountTransfer`,
-  `IdempotencyConflict`
-- `backend/src/domain/repositories.py` — add locking and idempotency methods
+**New**
 
-**Application**
+- `src/api/types.ts` — types mirroring the API payloads
+- `src/api/client.ts` — extend: accounts, deposits, transfers, expenses
+- `src/session/ActiveAccount.tsx` — context holding the selected account
+- `src/components/` — `Card`, `Money`, `Button`, `Field`, `EmptyState`,
+  `ErrorBanner`, `Spinner`, `AccountSwitcher`, `Avatar`
+- `src/pages/Dashboard.tsx`
+- `src/pages/Transfer.tsx`
+- `src/pages/History.tsx`
+- `src/pages/SharedExpenseDetail.tsx`
+- `src/pages/CreateSharedExpense.tsx`
+- `src/utils/money.ts` — COP formatting
+- `src/theme/tokens.css` — extend the existing tokens
 
-- `backend/src/application/commands.py` — add `TransferCommand`
-- `backend/src/application/services.py` — add `TransferService`
-- `backend/src/application/facade.py` — expose `transfer(...)`
+**Modified**
 
-**Infrastructure**
-
-- `backend/src/infrastructure/persistence/models.py` — add `TransferOperationModel`
-- `backend/src/infrastructure/persistence/repositories.py` — implement locking
-  and idempotency
-- `backend/src/infrastructure/persistence/migrations/0003_transfers.py`
-- `backend/src/infrastructure/container.py` — wire `TransferService`
-
-**Presentation**
-
-- `backend/src/presentation/controllers/transfers.py`
-- `backend/src/presentation/serializers.py` — add transfer serializers
-- `backend/config/urls.py` — mount `POST /api/transfers/`
-
-**Tests**
-
-- `backend/tests/domain/test_transfer_factory.py`
-- `backend/tests/application/test_transfer_service.py` (fakes, no DB)
-- `backend/tests/integration/test_transfers_api.py`
-- `backend/tests/integration/test_transfer_concurrency.py` (real threads)
+- `src/App.tsx` — routing and shell
+- `src/index.css`
 
 ## Layer assignment
 
-| Unit | Layer | Why |
-|---|---|---|
-| `for_transfer`, transfer errors | domain | The balanced-pair rule and the money rules hold regardless of storage. |
-| `TransferCommand`, `TransferService` | application | Owns the transaction boundary and the operation sequence. |
-| `TransferOperationModel`, locking, idempotency lookup | infrastructure | Row locks and unique constraints are database mechanics. |
-| `transfers.py` controller | presentation | Request shape in, HTTP out. It must not know what a lock is. |
+| Unit | Role |
+|---|---|
+| `api/` | The only place that knows URLs and response shapes. |
+| `session/` | Who is the active account. |
+| `pages/` | Composition and data fetching per screen. |
+| `components/` | Presentational, no fetching. |
+| `utils/money.ts` | Formatting only. |
 
-`SELECT ... FOR UPDATE` appears only in the repository implementation.
-`transaction.atomic` appears only in `TransferService`.
+No component calls `fetch` directly. Pages call the client.
 
 ## Patterns
 
-No new pattern is introduced. Transfers reuse Command, Repository, Factory,
-Facade and dependency injection exactly as deposits do. If a transfer needs a
-new pattern to work, something is wrong with the design — say so instead of
-adding one.
-
-`LedgerEntryFactory.for_transfer` mirrors `for_deposit`: it returns the
-**pair**, so a one-sided transfer is unobtainable.
+MVC in the large: the frontend is the view, the API is the model, the pages
+coordinate. No state management library — React state and context are enough
+for five screens, and an interviewer asking "why Redux?" should get the answer
+"because nothing here needed it".
 
 ## Invariants at risk
 
-Every invariant in `references/invariants.md` is live in this goal.
+The frontend cannot break a financial invariant; the backend rejects bad
+input regardless. But two things must hold anyway:
 
-- **INV-1 (conservation).** Two entries summing to zero, one `operation_id`.
-  The failure mode is writing one side and committing.
-- **INV-3 (sufficient funds).** The dangerous failure is a time-of-check to
-  time-of-use race: reading the balance outside the lock lets two concurrent
-  transfers both observe funds that only cover one of them. **The balance
-  must be read after the locks are held.**
-- **INV-4 (atomicity).** One `atomic` block covering the idempotency record,
-  both ledger entries, and nothing else. No side effects inside it.
-- **INV-5 (idempotency).** The dangerous failure is checking for an existing
-  key with a `SELECT` and then inserting. Two concurrent retries both pass
-  that check. **Uniqueness must be enforced by a database constraint**, and
-  the duplicate must be detected by catching the integrity error.
-- **INV-6 (precision).** Integer minor units throughout, as in GOAL 1.
-- **INV-7 (immutable history).** The GOAL 1 trigger already covers this.
-- **INV-8 (distinct counterparties).** Self-transfer is rejected *before* any
-  lock is taken — otherwise the operation deadlocks against its own row.
-- **INV-9 (account state).** Both accounts must exist. `EXTERNAL_FUNDING`
-  cannot be either side of a user transfer.
+- **INV-6 (precision).** The frontend must never do money arithmetic in
+  floating point. Amounts are integers in minor units end to end. The input
+  field parses a typed COP amount into integer minor units by string
+  manipulation, never `parseFloat`. Display formatting is the only conversion,
+  and it is one-way.
+- The UI must not imply money moved when it did not. A failed transfer shows
+  the server's error; it never optimistically updates a balance.
 
 ## Decisions
 
-1. **Deterministic lock order.** Both account rows are locked with
-   `SELECT ... FOR UPDATE` in ascending order of account UUID, **always**,
-   regardless of which is the sender. This is the whole defence against
-   deadlock: two simultaneous opposite transfers (A→B and B→A) otherwise grab
-   the rows in opposite order and wait on each other forever.
-2. **Idempotency is a table, not a check.** `TransferOperationModel` has
-   `idempotency_key` with a `UNIQUE` constraint. The service inserts that row
-   first, inside the transaction. A duplicate raises `IntegrityError`, which
-   is the signal that this request already happened. There is no
-   `SELECT ... if not exists ... INSERT`, because two concurrent retries both
-   survive that pattern.
-3. **A replayed key returns the original result, not an error.** Same key,
-   same request → `200 OK` with the body of the original transfer. First
-   time → `201 Created`. The caller cannot tell how many times it retried,
-   which is the point.
-4. **Same key, different request → `409 Conflict`.** `TransferOperationModel`
-   stores a `request_fingerprint` (a hash over source, destination, amount and
-   currency). If the key matches but the fingerprint does not, the client has
-   reused a key for a different operation; that is a bug on their side and
-   must be surfaced loudly, never silently treated as a replay.
-5. **The balance check happens after locking.** Sequence inside `atomic`:
-   reject self-transfer → insert idempotency row → lock both accounts in UUID
-   order → read source balance → check sufficiency → append the entry pair.
-6. **`EXTERNAL_FUNDING` is not a valid party.** Transfers are user-to-user.
-   Funding only moves through deposits.
-7. **The idempotency row stores the resulting `operation_id`** so a replay can
-   reconstruct the original response without recomputing anything.
-8. **No retry loop, no backoff, no queue.** If the database raises a
-   serialization or deadlock error, it propagates as a 500. Adding retry
-   machinery now would hide the very races these tests exist to detect.
+1. **Five screens.** Dashboard, transfer, history, expense detail, create
+   expense. Anything else is out of scope.
+2. **Account switcher instead of login.** There is no auth (declared
+   assumption). A control in the header picks the active account from
+   `GET /api/accounts/`. The choice persists in `localStorage`, wrapped in
+   try/catch, and the app works if storage is unavailable.
+3. **COP formatting.** `$ 180.000` — thousands separated with `.`, no decimals
+   shown when the amount is a whole peso. Minor units divide by 100 for
+   display only. Use `Intl.NumberFormat("es-CO")`.
+4. **The amount input is integer-only.** The user types pesos; the field
+   converts to minor units with string handling. No `parseFloat` anywhere in
+   `frontend/src`.
+5. **Every screen handles three states explicitly**: loading, error, empty.
+   Empty states say something useful, not "No data". Errors show the server's
+   message and offer a retry.
+6. **Context is the point, so make it visible.** In History, a transfer that
+   belongs to an expense shows the expense title as a chip linking to its
+   detail. An unlinked transfer looks plainly different. If a viewer cannot
+   see the difference in the demo, this goal failed.
+7. **Realistic demo data, in Spanish.** "Cena del viernes", "Arriendo
+   noviembre", "Mercado". No lorem ipsum, no "Test User 1".
+8. **Visual direction:** the existing purple/teal/neutral tokens, generous
+   whitespace, rounded cards, one clear hierarchy per screen. Take layout and
+   component structure ideas from
+   `C:\Users\nrir\Desktop\dev\Proyectos\daily-fitness-platform` — **read only,
+   never modify it** — and take none of its fitness content.
+9. **Responsive down to 360px.** The dashboard and history must be usable on a
+   phone. No horizontal scrolling.
+10. **No new runtime dependency** beyond `react-router-dom`, which is already
+    present. No UI kit, no CSS framework, no state library, no chart library.
 
-## Interfaces
+## Screens
 
-```python
-@dataclass(frozen=True)
-class TransferCommand:
-    source_account_id: UUID
-    destination_account_id: UUID
-    amount: Money
-    idempotency_key: str
-```
+**Dashboard** — active account, balance in large type, primary action to
+transfer, recent activity (last 5, with context chips), and the shared
+expenses this account takes part in with their outstanding amount.
 
-Repository additions:
+**Transfer** — destination account picker (handle + display name), amount,
+optional shared expense selector, and a submit that shows the server's error
+on failure. The idempotency key is generated client-side with
+`crypto.randomUUID()` per submit attempt, and **reused if the user retries the
+same submission after a network error** — that is what the key is for.
 
-```python
-class AccountRepository(ABC):
-    def lock_for_update(self, account_ids: Sequence[UUID]) -> list[Account]:
-        """Lock the given accounts in ascending UUID order. Raises
-        AccountNotFound if any is missing."""
+**History** — full movement list for the active account. Each row: direction,
+counterparty, amount, date, and the context chip when present. Deposits are
+labelled as loading balance, not as a transfer.
 
-class TransferOperationRepository(ABC):
-    def claim(self, key: str, fingerprint: str, operation_id: UUID) -> None:
-        """Insert the idempotency record. Raises DuplicateIdempotencyKey if
-        the key already exists."""
-    def get(self, key: str) -> TransferOperation: ...
-```
+**Shared expense detail** — title, total, payer, participants table with
+share / paid / outstanding, overall outstanding, settled state, and the
+transfers linked to it.
 
-HTTP:
+**Create shared expense** — title, total, participant picker, payer, equal
+split preview showing exactly what each person will owe **before** submitting.
+The preview must match what the backend computes.
 
-```
-POST /api/transfers/
-{
-  "source_account_id": "...",
-  "destination_account_id": "...",
-  "amount_minor": 6000000,
-  "currency": "COP",
-  "idempotency_key": "any-client-string"
-}
+## Required checks
 
-201 {"operation_id", "source_balance_minor", "destination_balance_minor",
-     "currency", "replayed": false}
-200 same body with "replayed": true        — same key, same request
-409 {"detail": "..."}                      — same key, different request
-400                                        — non-positive amount, same account,
-                                             funding account, bad shape
-404                                        — source or destination missing
-422 {"detail": "Insufficient funds."}       — INV-3
-```
+There is no frontend test runner yet and this goal does not add one. The gate
+is:
 
-`idempotency_key`: 8–128 characters, required. A transfer without one is
-rejected with 400 — for money movement, retry safety is not optional.
-
-## Required tests
-
-Domain (no DB):
-
-1. `test_transfer_factory_returns_balanced_pair` — two entries, sum zero, one
-   shared `operation_id`. INV-1.
-2. `test_transfer_factory_rejects_non_positive_amount` — INV-2.
-3. `test_transfer_factory_rejects_same_account` — INV-8.
-
-Application (fakes, no DB):
-
-4. `test_transfer_service_locks_before_reading_balance` — use a fake
-   repository that records call order; assert `lock_for_update` is called
-   before the balance is read. This is the INV-3 race, made into a test that
-   fails if someone reorders the code.
-5. `test_transfer_service_rejects_insufficient_funds`.
-
-Integration (real PostgreSQL):
-
-6. `test_transfer_moves_money_and_both_balances_change`.
-7. `test_transfer_rejects_insufficient_funds_and_writes_nothing` — assert the
-   ledger is unchanged afterwards, not merely that the response was 422.
-8. `test_transfer_rejects_same_account` — INV-8.
-9. `test_transfer_rejects_zero_and_negative` — INV-2.
-10. `test_transfer_rejects_unknown_source_and_destination`.
-11. `test_transfer_rejects_external_funding_as_either_party`.
-12. `test_replayed_idempotency_key_returns_original_result` — sequential;
-    exactly one operation exists afterwards. INV-5.
-13. `test_same_key_different_payload_returns_409` — INV-5.
-14. `test_rollback_after_injected_failure_leaves_no_entries` — inject a
-    failure after the first entry would be written; assert zero entries and
-    **no orphaned idempotency row**, so the retry can still succeed. INV-4.
-
-Concurrency (real threads, real connections, `django_db(transaction=True)`):
-
-15. `test_concurrent_duplicate_idempotency_key_creates_one_transfer` — fire
-    the same key from N threads simultaneously; exactly one ledger operation
-    exists and every response describes the same transfer. INV-5.
-16. `test_concurrent_transfers_cannot_overspend` — an account with exactly
-    enough for one transfer, two threads each trying to spend all of it.
-    Exactly one succeeds, one gets 422, and the final balance is never
-    negative. INV-3.
-17. `test_opposite_transfers_do_not_deadlock` — A→B and B→A fired
-    simultaneously many times. Both complete, no deadlock error. This is the
-    test that proves the lock ordering in Decision 1 does its job.
-18. `test_global_conservation_after_concurrent_load` — after all concurrent
-    tests' worth of mixed deposits and transfers, the whole ledger still sums
-    to exactly zero. INV-1.
-
-Concurrency tests must use real threads with separate database connections
-and close them properly. A test that fakes concurrency proves nothing.
+1. `npm run build` passes with no TypeScript errors.
+2. `npm run lint` passes.
+3. `grep -rn "parseFloat\|Number(" frontend/src` shows no float parsing on a
+   money path.
+4. Manual verification of the full flow against the running backend:
+   create three accounts, load balance, create "Cena del viernes" for 180.000
+   among three, confirm the preview shows 60.000 each, transfer from one
+   participant linked to the expense, and see the outstanding drop and the
+   context chip appear in history.
+5. The layout does not break at 360px width.
 
 ## Acceptance criteria
 
-1. Every test above passes against PostgreSQL, repeatedly. Run the
-   concurrency tests at least 5 times in a row to catch flakiness — a race
-   that appears one run in five is a failing test, not a flaky one.
-2. Total ledger sum is exactly zero after any mixture of operations.
-3. No account except `EXTERNAL_FUNDING` can reach a negative balance.
-4. `SELECT ... FOR UPDATE` appears only in the repository layer.
-5. `transaction.atomic` for transfers appears only in `TransferService`.
-6. A transfer cannot be issued without an idempotency key.
-7. The existing 52 tests still pass.
+1. All five screens work against the real API. No mocked data anywhere.
+2. Loading, error and empty states exist on every screen that fetches.
+3. A transfer failure shows the server's message and does not alter the
+   displayed balance.
+4. Context is visibly distinguishable in history.
+5. `npm run build` and `npm run lint` pass.
+6. No new runtime dependency.
 
 ## Out of scope
 
-- shared expenses and any link between a transfer and a context (GOAL 3)
-- domain events (GOAL 3)
-- frontend (GOAL 4)
-- transfer reversal, cancellation, scheduling, fees, limits
-- authentication and authorisation
-- retry/backoff machinery (Decision 8)
+- authentication, registration, sessions
+- editing or deleting expenses
+- pagination and search
+- dark mode
+- animations beyond simple transitions
+- frontend unit tests
+- internationalisation beyond writing the UI in Spanish
+
+---
+
+## FIX — review round 1
+
+The frontend works. I verified the five screens against the live API, the
+split preview matches the backend exactly including which participant
+receives the leftover minor unit, and there is no float parsing anywhere.
+Three changes before this goal closes.
+
+### FIX-1 — Reformat the JSX. This is the important one.
+
+`src/pages/SharedExpenseDetail.tsx` contains a single line of **1111
+characters**. Across `frontend/src` there are 28 lines longer than 200
+characters. Entire components are written as one line of JSX.
+
+This is not a style preference. The interview for this challenge is sixty
+minutes of pair programming on this code with a change I have not
+anticipated, and a 1111-character line is the worst possible thing to modify
+live. The apparent compactness (675 lines) is false: the code is the same
+size, just unreadable.
+
+Reformat all of `frontend/src` to conventional multi-line JSX:
+
+- No line longer than 120 characters.
+- One JSX attribute per line when an element has more than two.
+- Extract deeply nested inline JSX into small named components where that
+  removes nesting, but do **not** invent new abstractions just to shorten
+  lines — prefer plain line breaks.
+- Behaviour must not change at all. This is formatting only.
+
+Apply the same to any backend line over 180 characters, listed by:
+`find backend/src -name "*.py" | xargs awk 'length>180 {print FILENAME":"FNR}'`
+
+### FIX-2 — Fix Spanish pluralisation
+
+`{n} personas` renders "1 personas". Three call sites:
+`CreateSharedExpense.tsx`, `Dashboard.tsx`, `SharedExpenseDetail.tsx`.
+Render "1 persona" for one and "N personas" otherwise. A tiny shared helper
+is fine; a full i18n library is not.
+
+### FIX-3 — Remove `frontend/VERIFICATION.md`
+
+Delete it. It was not requested, it sits at the frontend root where a
+reviewer will trip over it, and it records environment-specific sandbox
+failures ("Windows execution environment denies esbuild access") that are
+artefacts of how it was produced, not facts about this project. Verification
+is recorded in `docs/GOALS.md`.
+
+### Required for this fix
+
+- `npm run build` and `npm run lint` still pass.
+- The backend suite still passes unchanged.
+- No line in `frontend/src` exceeds 120 characters.
+- The rendered UI is byte-for-byte equivalent in behaviour; this is a
+  formatting and copy change only.

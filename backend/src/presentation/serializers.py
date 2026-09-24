@@ -60,6 +60,8 @@ class DepositResultSerializer(serializers.Serializer):
 
 
 class HistorySerializer(serializers.Serializer):
+    shared_expense_id = serializers.UUIDField(allow_null=True)
+    shared_expense_title = serializers.CharField(allow_null=True)
     operation_id = serializers.UUIDField(source="entry.operation_id")
     operation_type = serializers.CharField(source="entry.operation_type")
     amount_minor = StrictIntegerField(source="entry.money.amount_minor")
@@ -76,6 +78,7 @@ class IdempotencyKeyField(serializers.CharField):
 
 
 class TransferSerializer(serializers.Serializer):
+    shared_expense_id = serializers.UUIDField(required=False, allow_null=True, default=None)
     source_account_id = serializers.UUIDField()
     destination_account_id = serializers.UUIDField()
     amount_minor = StrictIntegerField(max_value=2**63 - 1)
@@ -84,8 +87,40 @@ class TransferSerializer(serializers.Serializer):
 
 
 class TransferResultSerializer(serializers.Serializer):
+    shared_expense_id = serializers.UUIDField(allow_null=True)
     operation_id = serializers.UUIDField()
     source_balance_minor = StrictIntegerField(source="source_balance.amount_minor")
     destination_balance_minor = StrictIntegerField(source="destination_balance.amount_minor")
     currency = serializers.CharField(source="source_balance.currency")
     replayed = serializers.BooleanField()
+
+
+class CreateSharedExpenseSerializer(serializers.Serializer):
+    title = serializers.CharField(max_length=200)
+    total_minor = StrictIntegerField(max_value=2**63 - 1)
+    currency = serializers.ChoiceField(choices=['COP'])
+    payer_account_id = serializers.UUIDField()
+    participant_account_ids = serializers.ListField(child=serializers.UUIDField(), allow_empty=False)
+    split = serializers.ChoiceField(choices=['equal'])
+
+
+class ParticipantSerializer(serializers.Serializer):
+    account_id = serializers.UUIDField(source='account.id')
+    handle = serializers.CharField(source='account.handle')
+    display_name = serializers.CharField(source='account.display_name')
+    share_minor = StrictIntegerField(source='share.amount_minor')
+    paid_minor = StrictIntegerField()
+    outstanding_minor = StrictIntegerField()
+    excess_minor = StrictIntegerField()
+    settled = serializers.BooleanField()
+
+
+class SharedExpenseSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    title = serializers.CharField()
+    total_minor = StrictIntegerField(source='total.amount_minor')
+    currency = serializers.CharField(source='total.currency')
+    payer = serializers.UUIDField()
+    participants = ParticipantSerializer(many=True)
+    outstanding_total_minor = StrictIntegerField()
+    settled = serializers.BooleanField()

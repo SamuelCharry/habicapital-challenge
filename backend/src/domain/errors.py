@@ -40,3 +40,11 @@ class IdempotencyConflict(DomainError):
 
 class DuplicateIdempotencyKey(DomainError):
     pass
+
+
+class InvalidSharedExpense(DomainError):
+    pass
+
+
+class SharedExpenseNotFound(DomainError):
+    pass

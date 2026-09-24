@@ -1,7 +1,7 @@
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from src.domain.errors import AccountNotFound, DomainError
+from src.domain.errors import AccountNotFound, DomainError, SharedExpenseNotFound
 from src.infrastructure.container import build_wallet
 from src.presentation.serializers import (
     AccountSerializer, BalanceSerializer, CreateAccountSerializer, DepositSerializer,
@@ -14,7 +14,7 @@ class WalletView(APIView):
 
     def handle_exception(self, exc):
         if isinstance(exc, DomainError):
-            return Response({"detail": str(exc)}, status=404 if isinstance(exc, AccountNotFound) else 400)
+            return Response({"detail": str(exc)}, status=404 if isinstance(exc, (AccountNotFound, SharedExpenseNotFound)) else 400)
         return super().handle_exception(exc)
 
 

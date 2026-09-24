@@ -87,6 +87,45 @@ mismo agente que escribió el código. Los tests los corro yo.
 
 ---
 
+## 2026-09-24 — El agente se negó a implementar, y el error era mío de diseño
+
+**Qué pasó.** Escribí el plan de gastos compartidos con dos requisitos que
+parecían independientes. Uno decía que toda cuota debe ser positiva. Otro
+pedía un test de propiedad que recorriera totales desde 1 centavo repartidos
+entre hasta 9 participantes, verificando que las partes sumaran exacto.
+
+Codex no escribió una línea. Reportó que los dos requisitos son incompatibles:
+repartir 1 peso entre 3 personas obliga matemáticamente a que alguien quede en
+cero, y no existe implementación que cumpla ambos.
+
+**Por qué es el caso más interesante que me ha pasado con IA.** Los dos
+registros anteriores son sobre agentes que se equivocan o sobre instrucciones
+mías mal redactadas. Este es distinto: el agente encontró **un defecto de
+diseño en el plan del arquitecto**, en un requisito que yo había escrito con
+confianza y revisado.
+
+Y lo que habría pasado sin ese contrato es peor que un error visible. Un agente
+optimizando por "terminar la tarea" resuelve el conflicto en silencio y por el
+camino más fácil: permite cuotas de cero. El sistema compila, los tests pasan,
+y queda una violación de invariante enterrada en el código, en la operación
+que reparte plata entre personas. Nadie se entera hasta que alguien reclama.
+
+**Qué decidí.** No debilité la regla: rechacé la entrada. Un gasto cuyo total
+es menor que su número de participantes devuelve 400. Un participante que no
+debe nada no es un participante, y un gasto del que nadie puede deber una parte
+no es un gasto. La regla "toda cuota es positiva" sigue intacta, y el caso
+imposible ahora tiene una respuesta explícita en vez de un comportamiento
+accidental.
+
+**Lo que me llevo.** El valor de decirle a un agente "detente ante una
+contradicción" no está en que evite código malo: está en que convierte los
+huecos de mi propio razonamiento en preguntas, cuando normalmente se
+convertirían en comportamiento. Verifiqué después el reparto con 32.934
+combinaciones de total y número de participantes: suma exacta en todas, ninguna
+cuota en cero, diferencia máxima entre cuotas de un centavo.
+
+---
+
 ## 2026-09-23 — El agente se frenó por una ambigüedad mía
 
 **Qué pasó.** En el primer intento de implementar la fundación, Codex no

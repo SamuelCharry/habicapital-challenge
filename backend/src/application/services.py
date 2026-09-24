@@ -9,9 +9,12 @@ from django.db import transaction
 from src.domain.entities import Account, LedgerEntry
 from src.domain.errors import DuplicateIdempotencyKey, IdempotencyConflict, InsufficientFunds, SameAccountTransfer
 from src.domain.factories import LedgerEntryFactory
+from src.domain.events import EventDispatcher, TransferCompleted
 from src.domain.money import Money
-from src.domain.repositories import AccountRepository, LedgerRepository, TransferOperationRepository
-from .commands import CreateAccountCommand, DepositCommand, TransferCommand
+from src.domain.repositories import AccountRepository, LedgerRepository, TransferOperationRepository, SharedExpenseRepository
+from src.domain.shared_expenses import SharedExpense
+from src.domain.split import EqualSplitStrategy
+from .commands import CreateAccountCommand, DepositCommand, TransferCommand, CreateSharedExpenseCommand
 
 
 @dataclass(frozen=True)
@@ -24,6 +27,8 @@ class AccountBalance:
 class HistoryItem:
     entry: LedgerEntry
     counterparty_handle: str
+    shared_expense_id: UUID | None = None
+    shared_expense_title: str | None = None
 
 
 @dataclass(frozen=True)
@@ -33,10 +38,11 @@ class DepositResult:
 
 
 class AccountService:
-    def __init__(self, accounts: AccountRepository, ledger: LedgerRepository, *, new_id=uuid4):
+    def __init__(self, accounts: AccountRepository, ledger: LedgerRepository, *, new_id=uuid4, expenses: SharedExpenseRepository | None = None):
         self.accounts = accounts
         self.ledger = ledger
         self.new_id = new_id
+        self.expenses = expenses
 
     def create(self, command: CreateAccountCommand) -> AccountBalance:
         with transaction.atomic():
@@ -59,8 +65,10 @@ class AccountService:
         self.accounts.get(account_id)
         entries = self.ledger.entries_for(account_id)
         handles = self.accounts.handles_for({e.counterparty_id for e in entries})
+        transfer_ids = {e.operation_id for e in entries if e.operation_type == 'transfer'}
+        contexts = self.expenses.contexts_for(transfer_ids) if self.expenses and transfer_ids else {}
         return [
-            HistoryItem(e, handles[e.counterparty_id])
+            HistoryItem(e, handles[e.counterparty_id], *contexts.get(e.operation_id, (None, None)))
             for e in entries
         ]
 
@@ -93,6 +101,7 @@ class TransferResult:
     source_balance: Money
     destination_balance: Money
     replayed: bool = False
+    shared_expense_id: UUID | None = None
 
 
 class TransferService:
@@ -100,6 +109,8 @@ class TransferService:
         self, accounts: AccountRepository, ledger: LedgerRepository,
         operations: TransferOperationRepository, *, atomic=transaction.atomic,
         new_id=uuid4, clock=lambda: datetime.now(timezone.utc),
+        expenses: SharedExpenseRepository | None = None,
+        dispatcher: EventDispatcher | None = None, on_commit=transaction.on_commit,
     ):
         self.accounts = accounts
         self.ledger = ledger
@@ -107,12 +118,19 @@ class TransferService:
         self.atomic = atomic
         self.new_id = new_id
         self.clock = clock
+        self.expenses = expenses
+        self.dispatcher = dispatcher
+        self.on_commit = on_commit
 
     def transfer(self, command: TransferCommand) -> TransferResult:
-        fingerprint = sha256(json.dumps([
+        request_data = [
             str(command.source_account_id), str(command.destination_account_id),
             command.amount.amount_minor, command.amount.currency,
-        ], separators=(",", ":")).encode("utf-8")).hexdigest()
+        ]
+        # Keep historical unlinked fingerprints stable across this additive change.
+        if command.shared_expense_id is not None:
+            request_data.append(str(command.shared_expense_id))
+        fingerprint = sha256(json.dumps(request_data, separators=(",", ":")).encode("utf-8")).hexdigest()
         try:
             with self.atomic():
                 if command.source_account_id == command.destination_account_id:
@@ -120,6 +138,12 @@ class TransferService:
                 operation_id = self.new_id()
                 # INSERT first: the unique constraint arbitrates concurrent retries.
                 self.operations.claim(command.idempotency_key, fingerprint, operation_id)
+                if command.shared_expense_id is not None:
+                    if self.expenses is None:
+                        raise RuntimeError('Shared expense repository is required for contextual transfers.')
+                    expense = self.expenses.get(command.shared_expense_id)
+                    expense.validate_transfer(command.source_account_id, command.destination_account_id)
+                    self.operations.link_expense(operation_id, expense.id)
                 accounts = {a.id: a for a in self.accounts.lock_for_update([
                     command.source_account_id, command.destination_account_id,
                 ])}
@@ -135,8 +159,12 @@ class TransferService:
                 result = TransferResult(
                     operation_id, self.accounts.balance_of(command.source_account_id),
                     self.accounts.balance_of(command.destination_account_id),
+                    shared_expense_id=command.shared_expense_id,
                 )
                 self.operations.complete(command.idempotency_key, result.source_balance, result.destination_balance)
+                if self.dispatcher is not None:
+                    event = TransferCompleted(operation_id, command.shared_expense_id)
+                    self.on_commit(lambda: self.dispatcher.publish(event), robust=True)
                 return result
         except DuplicateIdempotencyKey:
             # The failed transaction must be rolled back before querying the winner.
@@ -145,4 +173,33 @@ class TransferService:
                 raise IdempotencyConflict("Idempotency key was used for a different request.")
             return TransferResult(
                 original.operation_id, original.source_balance, original.destination_balance, replayed=True,
+                shared_expense_id=command.shared_expense_id,
             )
+
+
+class SharedExpenseService:
+    def __init__(
+        self, accounts: AccountRepository, expenses: SharedExpenseRepository, *,
+        atomic=transaction.atomic, new_id=uuid4,
+    ):
+        self.accounts = accounts
+        self.expenses = expenses
+        self.atomic = atomic
+        self.new_id = new_id
+
+    def create(self, command: CreateSharedExpenseCommand) -> SharedExpense:
+        with self.atomic():
+            accounts = [self.accounts.get(i) for i in sorted(command.participant_account_ids)]
+            expense = SharedExpense.create(
+                self.new_id(), command.title, command.total, command.payer_account_id,
+                accounts, EqualSplitStrategy(),
+            )
+            return self.expenses.add(expense)
+
+    def get(self, expense_id: UUID) -> SharedExpense:
+        return self.expenses.get(expense_id)
+
+    def list_expenses(self, account_id: UUID | None = None) -> list[SharedExpense]:
+        if account_id is not None:
+            self.accounts.get(account_id)
+        return self.expenses.list_expenses(account_id)

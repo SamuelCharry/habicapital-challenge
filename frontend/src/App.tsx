@@ -1,50 +1,90 @@
-import { useEffect, useState } from "react";
-import { getHealth, type HealthResponse } from "./api/client";
+﻿import { useCallback } from 'react';
+import { Link, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { api } from './api/client';
+import { ActiveAccount, useActiveAccount } from './session/ActiveAccount';
+import { useLoad } from './pages/useLoad';
+import Dashboard from './pages/Dashboard';
+import Transfer from './pages/Transfer';
+import History from './pages/History';
+import SharedExpenseDetail from './pages/SharedExpenseDetail';
+import CreateSharedExpense from './pages/CreateSharedExpense';
+import { AccountSwitcher } from './components/AccountSwitcher';
+import { EmptyState } from './components/EmptyState';
+import { Spinner } from './components/Spinner';
+import { ErrorBanner } from './components/ErrorBanner';
+import { Button } from './components/Button';
 
-export default function App() {
-  const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    getHealth()
-      .then((result) => {
-        if (active) setHealth(result);
-      })
-      .catch(() => {
-        if (active) setFailed(true);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
+function Shell({ refresh }: { refresh: () => void }) {
+  const { accounts, active, select } = useActiveAccount();
+  const location = useLocation();
   return (
-    <main className="shell">
-      <header className="brand">HabiCapital<span> / Foundation</span></header>
-      <section className="status-card" aria-labelledby="status-title">
-        <p className="eyebrow">System status</p>
-        <h1 id="status-title">A connected beginning.</h1>
-        <p className="intro">The foundation for what comes next.</p>
-        <div className="status" role="status" aria-live="polite">
-          <span className={`indicator ${health?.status === "ok" ? "healthy" : ""}`} aria-hidden="true" />
-          <p>
-            {failed
-              ? "Unable to reach the backend. Please try again later."
-              : health
-                ? health.status === "ok"
-                  ? "Backend online"
-                  : "Backend degraded"
-                : "Checking connection…"}
-          </p>
+    <>
+      <a className="skip-link" href="#main">
+        Ir al contenido
+      </a>
+      <header className="app-header">
+        <div className="header-inner">
+          <Link to="/" className="brand">
+            <span className="brand-mark" aria-hidden="true">
+              h
+            </span>
+            habi<span>capital</span>
+          </Link>
+          <nav aria-label="Navegación principal">
+            <NavLink end to="/">
+              Inicio
+            </NavLink>
+            <NavLink to="/transfer">Transferir</NavLink>
+            <NavLink to="/history">Historial</NavLink>
+          </nav>
+          <AccountSwitcher accounts={accounts} value={active?.id || ''} onChange={select} />
         </div>
-        {health && (
-          <dl className="details">
-            <div><dt>Database</dt><dd>{health.database === "ok" ? "Connected" : "Unavailable"}</dd></div>
-            <div><dt>Version</dt><dd>{health.version}</dd></div>
-          </dl>
+      </header>
+      <main id="main" className="shell" key={`${active?.id}:${location.pathname}:${location.search}`}>
+        {!active ? (
+          <EmptyState title="Todo empieza con una cuenta">
+            <p>
+              Aún no hay cuentas disponibles. Crea las cuentas de demostración en la API y actualiza para
+              empezar.
+            </p>
+            <Button onClick={refresh}>Actualizar cuentas</Button>
+          </EmptyState>
+        ) : (
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/transfer" element={<Transfer />} />
+            <Route path="/history" element={<History />} />
+            <Route path="/expenses/new" element={<CreateSharedExpense />} />
+            <Route path="/expenses/:expenseId" element={<SharedExpenseDetail />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
         )}
-      </section>
-    </main>
+      </main>
+      <footer className="app-footer">
+        <span>habi capital</span>
+        <span>El dinero cuenta historias.</span>
+      </footer>
+    </>
+  );
+}
+export default function App() {
+  const { data, loading, error, retry } = useLoad(useCallback(() => api.accounts(), []));
+  if (loading)
+    return (
+      <main className="shell">
+        <Spinner />
+      </main>
+    );
+  if (error)
+    return (
+      <main className="shell">
+        <h1>HabiCapital</h1>
+        <ErrorBanner message={error} retry={retry} />
+      </main>
+    );
+  return (
+    <ActiveAccount accounts={data || []}>
+      <Shell refresh={retry} />
+    </ActiveAccount>
   );
 }

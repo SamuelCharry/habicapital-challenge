@@ -2,11 +2,15 @@ from django.urls import path
 
 from src.presentation.controllers.health import HealthView
 from src.presentation.controllers.transfers import TransfersView
+from src.presentation.controllers.shared_expenses import SharedExpensesView, SharedExpenseView, AccountSharedExpensesView
 
 
 from src.presentation.controllers.accounts import AccountsView, AccountView, BalanceView, HistoryView, DepositsView
 
 urlpatterns = [
+    path('api/shared-expenses/', SharedExpensesView.as_view(), name='shared-expenses'),
+    path('api/shared-expenses/<uuid:expense_id>/', SharedExpenseView.as_view(), name='shared-expense'),
+    path('api/accounts/<uuid:account_id>/shared-expenses/', AccountSharedExpensesView.as_view(), name='account-shared-expenses'),
     path("api/transfers/", TransfersView.as_view(), name="transfers"),
     path("api/health/", HealthView.as_view(), name="health"),
     path("api/accounts/", AccountsView.as_view(), name="accounts"),

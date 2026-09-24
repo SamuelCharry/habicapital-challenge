@@ -44,7 +44,7 @@ def test_transfer_moves_money_and_both_balances_change():
     source, destination = funded_pair(2**53 + 1)
     response = post(payload(source, destination, amount_minor=2**53 + 1))
     assert response.status_code == 201
-    assert response.json() == dict(operation_id=response.json()["operation_id"], source_balance_minor=0, destination_balance_minor=2**53 + 1, currency="COP", replayed=False)
+    assert response.json() == dict(operation_id=response.json()["operation_id"], source_balance_minor=0, destination_balance_minor=2**53 + 1, currency="COP", replayed=False, shared_expense_id=None)
     repo = DjangoAccountRepository()
     assert repo.balance_of(UUID(source)) == Money(0)
     assert repo.balance_of(UUID(destination)) == Money(2**53 + 1)

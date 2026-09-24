@@ -4,6 +4,7 @@ from uuid import UUID
 
 from .entities import Account, LedgerEntry, TransferOperation
 from .money import Money
+from .shared_expenses import SharedExpense
 
 
 class AccountRepository(ABC):
@@ -54,3 +55,22 @@ class TransferOperationRepository(ABC):
     @abstractmethod
     def complete(self, key: str, source_balance: Money, destination_balance: Money) -> None:
         """Store the response in the same application transaction as the claim."""
+
+    @abstractmethod
+    def link_expense(self, operation_id: UUID, expense_id: UUID) -> None:
+        """Attach context in the same application transaction as the transfer."""
+
+
+class SharedExpenseRepository(ABC):
+    @abstractmethod
+    def add(self, expense: SharedExpense) -> SharedExpense: ...
+
+    @abstractmethod
+    def get(self, expense_id: UUID) -> SharedExpense:
+        """Load the agreement with payment state derived from linked transfers."""
+
+    @abstractmethod
+    def list_expenses(self, account_id: UUID | None = None) -> list[SharedExpense]: ...
+
+    @abstractmethod
+    def contexts_for(self, operation_ids: Iterable[UUID]) -> dict[UUID, tuple[UUID, str]]: ...

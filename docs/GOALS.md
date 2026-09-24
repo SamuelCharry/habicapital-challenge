@@ -10,8 +10,8 @@ Para el detalle de un goal en curso, ver `PLAN.md` en la raíz (se reescribe por
 | 0 | Fundación ejecutable | ✅ cerrado |
 | 1 | Money, Account, Ledger, Deposit | ✅ cerrado |
 | 2 | Transferencias seguras | ✅ cerrado |
-| 3 | Gastos compartidos + contexto | ⬜ |
-| 4 | Frontend MVP | ⬜ |
+| 3 | Gastos compartidos + contexto | ✅ cerrado |
+| 4 | Frontend MVP | ✅ cerrado |
 | 5 | Endurecimiento adversarial + auditoría | ⬜ |
 | 6 | README, decisiones y demo | ⬜ |
 
@@ -200,27 +200,84 @@ cuentas de usuario en negativo.
 
 ---
 
-### GOAL 3 — Gastos compartidos + contexto ⬜
+### GOAL 3 — Gastos compartidos + contexto ✅
 
-La extensión propia: transacciones que conservan contexto. El reto mismo dice que los bancos
-mueven plata pero no entienden que esos $50.000 son del cumpleaños de un amigo.
+Nuestra extensión propia. El reto dice que los bancos mueven plata pero no entienden que esos
+$50.000 son del cumpleaños de un amigo, y que todo queda como líneas sueltas en un extracto.
+Esto es lo que ataca ese problema.
 
-`SharedExpense`, `Participant`, `Share` y `EqualSplitStrategy` (solo esa; la arquitectura debe
-permitir añadir porcentual o exacta sin tocar código ajeno). Crear un gasto **no mueve plata**.
-Una transferencia puede pertenecer a un gasto, y al completarse actualiza el estado de pago vía
-evento de dominio despachado **después** del commit: si ese efecto secundario falla, la plata ya
-está bien guardada.
+**Lo que hace.** Un gasto compartido agrupa un total, sus participantes y lo que cada uno debe.
+"Cena del viernes — COP 180.000" entre tres da 60.000 exactos cada uno, y quien pagó queda
+saldado de entrada. Una transferencia puede pertenecer al gasto, y al completarse el gasto sabe
+quién pagó y cuánto falta. El historial deja de decir "transferencia -60.000" y pasa a decir
+"transferencia -60.000 → Cena del viernes".
 
----
+**Las tres decisiones que importan.**
 
-### GOAL 4 — Frontend MVP ⬜
+- **Crear un gasto no mueve un peso.** Registra un acuerdo. La plata solo se mueve por
+  transferencias, que ya existían y ya eran seguras. Verificado: crear el gasto escribe **cero**
+  asientos en el ledger.
+- **El reparto es exacto.** Dividir 100.000 entre 3 no da redondo, así que el residuo se reparte
+  de a un centavo de forma determinista. Lo verifiqué con **32.934 combinaciones** de total y
+  número de participantes: suma exacta en todas, ninguna cuota en cero, diferencia máxima entre
+  cuotas de un centavo.
+- **El evento se despacha después del commit.** Actualizar un gasto no es crítico
+  financieramente; la plata sí. Hay un test que rompe el handler a propósito y verifica que corre
+  *fuera* de la transacción, que los asientos ya existen cuando corre, y que la transferencia
+  queda correcta con el ledger balanceado igual. Ese test es la única justificación válida para
+  usar un evento aquí en vez de una llamada directa.
 
-Cinco pantallas, ni una más: dashboard, transferir, historial, detalle de gasto y crear gasto.
-Toma del repo `daily-fitness-platform` la organización, los tokens CSS y los patrones de card —
-cero contenido de fitness. Paleta morado/teal/neutro, formato COP, estados vacíos y de error
-cuidados, conectado a endpoints reales.
+**Dos patrones entran, y ambos se ganan el puesto.** Strategy, porque repartir sí varía de
+verdad — equitativo, por porcentaje, por monto exacto — pero **solo se implementó el
+equitativo**: una costura limpia es mejor evidencia que una implementación sin usar. Y Observer,
+justificado por el test del handler roto. El dispatcher son 30 líneas explícitas; se rechazaron
+las señales de Django a propósito, porque son implícitas y difíciles de seguir cuando te piden un
+cambio en vivo.
 
----
+**Reglas de borde que se probaron.** Transferencia de alguien que no participa en el gasto → 400.
+Gasto con total menor que su número de participantes → 400. Sobrepago permitido y visible: el
+pendiente llega a cero y el exceso se reporta, porque la plata ya se movió y el sistema debe
+describir la realidad, no negarla.
+
+**Evidencia.** 148 tests pasan. Flujo completo por HTTP verificado, suma global del ledger `0`,
+cero operaciones desbalanceadas, cero importaciones de Django en el dominio, cero señales.
+
+**Un hallazgo del proceso.** Codex se negó a implementar este goal en el primer intento porque
+encontró una contradicción en mi plan que yo no había visto. Está en `docs/ai-log.md`.
+
+### GOAL 4 — Frontend MVP ✅
+
+Cinco pantallas: dashboard, transferir, historial, detalle de gasto y crear gasto. Conectadas a la
+API real, sin un solo dato simulado.
+
+**Lo que el frontend tenía que probar.** Que el producto se entiende en treinta segundos. El
+dashboard abre con "Tu dinero, con contexto"; en la actividad, la transferencia a Samuel lleva el
+chip **"Cena del viernes"** y el depósito no lleva ninguno. Esa diferencia visible *es* el
+producto — si no se notara en el video, el goal habría fallado.
+
+**La parte más difícil de acertar.** La vista previa del reparto, antes de crear el gasto, calcula
+las cuotas en el navegador. Si discrepara del backend, el usuario vería una cifra y el sistema
+guardaría otra. Verifiqué 100.000 entre tres personas: el frontend mostró 33.333,33 / 33.333,33 /
+**33.333,34** y el backend calculó exactamente lo mismo, con el centavo sobrante en la misma
+persona. Coincide hasta en el orden del residuo.
+
+**Precisión.** Cero `parseFloat` en todo el frontend. Los montos son `bigint` en unidades menores
+de punta a punta; el usuario escribe pesos enteros y la conversión se hace con manejo de cadenas.
+Formatear para mostrar es la única conversión, y va en un solo sentido.
+
+**Decisiones de alcance.** Sin biblioteca de estado: React y context alcanzan para cinco
+pantallas, y la respuesta a "¿por qué no Redux?" es "porque nada aquí lo necesitaba". Sin UI kit
+ni framework CSS. Selector de cuenta en vez de login, porque no hay autenticación y eso está
+declarado como supuesto.
+
+**Un hallazgo que los números escondían.** El frontend eran 675 líneas en 22 archivos, que suena
+compacto — hasta que medí el largo de las líneas: había **una de 1.111 caracteres** y 28 sobre
+200. Eran componentes enteros aplastados en una sola línea de JSX. La compactación era falsa. Se
+incorporó Prettier y se reformateó: la línea más larga ahora son 144 caracteres. Importa porque la
+entrevista son 60 minutos de pair programming sobre este código con un cambio no anticipado.
+
+**Evidencia.** Lint y build limpios, 148 tests del backend intactos, las cinco pantallas navegadas
+en el navegador contra la API real, y conservación global en `0` después de todo.
 
 ### GOAL 5 — Endurecimiento adversarial + auditoría ⬜
 

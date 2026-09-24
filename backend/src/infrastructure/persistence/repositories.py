@@ -5,10 +5,11 @@ from django.db import IntegrityError, connection
 from django.db.models import Sum
 
 from src.domain.entities import Account, EXTERNAL_FUNDING_ID, LedgerEntry, TransferOperation
-from src.domain.errors import AccountNotFound, DuplicateHandle, DuplicateIdempotencyKey
+from src.domain.errors import AccountNotFound, DuplicateHandle, DuplicateIdempotencyKey, SharedExpenseNotFound
 from src.domain.money import Money
-from src.domain.repositories import AccountRepository, LedgerRepository, TransferOperationRepository
-from .models import AccountModel, LedgerEntryModel, TransferOperationModel
+from src.domain.repositories import AccountRepository, LedgerRepository, TransferOperationRepository, SharedExpenseRepository
+from src.domain.shared_expenses import SharedExpense, Participant, Share
+from .models import AccountModel, LedgerEntryModel, TransferOperationModel, SharedExpenseModel, ParticipantModel
 
 
 def account_entity(row: AccountModel) -> Account:
@@ -91,6 +92,11 @@ class DjangoLedgerRepository(LedgerRepository):
 
 
 class DjangoTransferOperationRepository(TransferOperationRepository):
+    def link_expense(self, operation_id: UUID, expense_id: UUID) -> None:
+        if not connection.in_atomic_block:
+            raise RuntimeError('Transfer context requires an application transaction.')
+        TransferOperationModel.objects.filter(operation_id=operation_id).update(shared_expense_id=expense_id)
+
     def claim(self, key: str, fingerprint: str, operation_id: UUID) -> None:
         if not connection.in_atomic_block:
             raise RuntimeError("Transfer claims require an application transaction.")
@@ -121,3 +127,52 @@ class DjangoTransferOperationRepository(TransferOperationRepository):
             destination_balance_minor=destination_balance.amount_minor,
             currency=source_balance.currency,
         )
+
+
+class DjangoSharedExpenseRepository(SharedExpenseRepository):
+    def add(self, expense: SharedExpense) -> SharedExpense:
+        if not connection.in_atomic_block:
+            raise RuntimeError('Shared expenses require an application transaction.')
+        SharedExpenseModel.objects.create(
+            id=expense.id, title=expense.title, total_minor=expense.total.amount_minor,
+            currency=expense.total.currency, payer_id=expense.payer,
+        )
+        ParticipantModel.objects.bulk_create([
+            ParticipantModel(expense_id=expense.id, account_id=p.account.id, share_minor=p.share.amount_minor)
+            for p in expense.participants
+        ])
+        return expense
+
+    def get(self, expense_id: UUID) -> SharedExpense:
+        try:
+            row = SharedExpenseModel.objects.get(pk=expense_id)
+        except SharedExpenseModel.DoesNotExist as exc:
+            raise SharedExpenseNotFound('Shared expense does not exist.') from exc
+        participants = tuple(
+            Participant(account_entity(p.account), Share(Money(p.share_minor, row.currency)))
+            for p in row.participants.select_related('account').all()
+        )
+        # The transfer debit is the authoritative amount and sender. Do not copy
+        # either into a separate payment counter or depend on event delivery.
+        operations = TransferOperationModel.objects.filter(shared_expense_id=expense_id).values('operation_id')
+        payments = LedgerEntryModel.objects.filter(
+            operation_id__in=operations, operation_type='transfer', amount_minor__lt=0,
+            counterparty_id=row.payer_id, currency=row.currency,
+        ).values('account_id').annotate(total=Sum('amount_minor'))
+        return SharedExpense(row.id, row.title, Money(row.total_minor, row.currency), row.payer_id, participants).with_payments(
+            {p['account_id']: -int(p['total']) for p in payments}
+        )
+
+    def list_expenses(self, account_id: UUID | None = None) -> list[SharedExpense]:
+        rows = SharedExpenseModel.objects.all()
+        if account_id is not None:
+            rows = rows.filter(participants__account_id=account_id)
+        return [self.get(i) for i in rows.values_list('id', flat=True)]
+
+    def contexts_for(self, operation_ids: Iterable[UUID]) -> dict[UUID, tuple[UUID, str]]:
+        return {
+            operation_id: (expense_id, title)
+            for operation_id, expense_id, title in TransferOperationModel.objects.filter(
+                operation_id__in=operation_ids, shared_expense__isnull=False,
+            ).values_list('operation_id', 'shared_expense_id', 'shared_expense__title')
+        }
