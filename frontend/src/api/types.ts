@@ -62,3 +62,36 @@ export interface ExpenseInput {
   participant_account_ids: string[];
   split: 'equal';
 }
+export interface CreditProfile {
+  monthly_savings_minor: bigint;
+  months_consistent: number;
+  compliance_ratio: number | null;
+  down_payment_minor: bigint;
+  currency: 'COP';
+}
+export interface CreditSummary extends CreditProfile {
+  has_enough_evidence: boolean;
+}
+export interface Waypoint {
+  capacity: number;
+  stability: number;
+  qualify_probability: number;
+  monthly_savings_minor: bigint;
+  months_consistent: number;
+}
+export interface CreditStep {
+  order: number;
+  action: string;
+  magnitude: string;
+}
+export interface CreditPath {
+  profile: CreditProfile;
+  has_enough_evidence: boolean;
+  headline: string;
+  /** Perfiles reales del dataset: [capacidad, estabilidad, P(califica)]. */
+  population: [number, number, number][];
+  /** Perfiles que el modelo generó, superpuestos a los reales. */
+  generated: [number, number, number][];
+  trajectory: Waypoint[];
+  steps: CreditStep[];
+}

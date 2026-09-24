@@ -28,3 +28,15 @@
 :root {
   --color-teal-soft: #e6f5ef;
 }
+
+/* Paleta de la pantalla oscura. Vive aparte a propósito: es un momento
+   distinto del producto, no un modo oscuro global. */
+:root {
+  --dark-bg: #0a0a14;
+  --dark-bg-glow: #12101f;
+  --dark-text: #f2f0f8;
+  --dark-muted: #8b8a9e;
+  --dark-line: rgba(242, 240, 248, 0.08);
+  --dark-purple: #a48cf0;
+  --dark-teal: #5eead4;
+}

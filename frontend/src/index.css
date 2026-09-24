@@ -945,3 +945,366 @@ select {
     gap: 20px;
   }
 }
+
+/* --- La ruta al crédito ------------------------------------------------- */
+
+.app-dark {
+  background: radial-gradient(ellipse 70% 50% at 50% 30%, var(--dark-bg-glow) 0%, var(--dark-bg) 100%);
+  min-height: 100vh;
+  color: var(--dark-text);
+}
+.app-dark .app-header,
+.app-dark .app-footer {
+  background: transparent;
+  border-color: var(--dark-line);
+  color: var(--dark-muted);
+}
+.app-dark .brand {
+  color: var(--dark-text);
+}
+.app-dark .brand span {
+  color: var(--dark-text);
+}
+.app-dark .brand-mark {
+  background: var(--dark-purple);
+  color: var(--dark-bg);
+}
+.app-dark nav a {
+  color: var(--dark-muted);
+}
+.app-dark nav a.active {
+  background: rgba(164, 140, 240, 0.16);
+  color: var(--dark-text);
+}
+.app-dark .account-switcher span,
+.app-dark .account-switcher small {
+  color: var(--dark-muted);
+}
+.app-dark .account-switcher select {
+  background: transparent;
+  color: var(--dark-text);
+  border-color: var(--dark-line);
+}
+.app-dark .avatar {
+  background: rgba(164, 140, 240, 0.18);
+  color: var(--dark-purple);
+}
+
+.credit-page {
+  max-width: 720px;
+  margin: 0 auto;
+  width: 100%;
+}
+.credit-page .eyebrow {
+  color: var(--dark-muted);
+}
+.credit-page h1 {
+  margin: 12px 0 0;
+  font-size: clamp(1.8rem, 5vw, 3rem);
+  line-height: 1.1;
+  font-weight: 600;
+  letter-spacing: -1.2px;
+  text-wrap: pretty;
+}
+
+.credit-rows {
+  margin: var(--space-12) 0 0;
+  display: flex;
+  flex-direction: column;
+}
+.credit-rows > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1.3fr);
+  gap: var(--space-4);
+  align-items: baseline;
+  padding: var(--space-6) 0;
+  border-top: 1px solid var(--dark-line);
+}
+.credit-rows dt {
+  font-size: var(--text-base);
+  color: var(--dark-text);
+}
+.credit-rows dd {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 600;
+  letter-spacing: -0.6px;
+  transition: color 200ms ease-out;
+}
+/* Turquesa solo cuando el valor cambió por mover el deslizador: distingue lo
+   que tienes hoy de lo que tendrías en el escenario. */
+.credit-rows dd.moved {
+  color: var(--dark-teal);
+}
+.credit-rows span {
+  font-size: var(--text-sm);
+  color: var(--dark-muted);
+}
+
+.credit-map {
+  margin-top: var(--space-12);
+  position: relative;
+}
+.credit-map canvas {
+  width: 100%;
+  height: min(520px, 62vh);
+  display: block;
+}
+.credit-legend {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  gap: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--dark-muted);
+}
+.credit-legend span {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.credit-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.credit-slider {
+  margin-top: var(--space-6);
+}
+.credit-slider input {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--dark-teal);
+  cursor: pointer;
+}
+.credit-slider div {
+  margin-top: var(--space-2);
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-sm);
+  color: var(--dark-muted);
+}
+
+.credit-steps {
+  margin-top: var(--space-12);
+}
+.credit-steps ol {
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+.credit-steps li {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  gap: var(--space-4);
+  align-items: baseline;
+  padding: var(--space-6) 0;
+  border-top: 1px solid var(--dark-line);
+  font-size: var(--text-lg);
+}
+.credit-steps li:last-child {
+  border-bottom: 1px solid var(--dark-line);
+}
+.credit-steps li span:first-child {
+  color: var(--dark-muted);
+}
+.credit-steps li span:last-child {
+  font-weight: 600;
+}
+
+.credit-empty {
+  margin-top: var(--space-12);
+  padding-top: var(--space-8);
+  border-top: 1px solid var(--dark-line);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+.credit-empty > span {
+  font-size: var(--text-lg);
+  color: var(--dark-muted);
+}
+.credit-empty p {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+.credit-empty .credit-empty-detail {
+  font-weight: 400;
+  color: var(--dark-muted);
+}
+.credit-empty a {
+  color: var(--dark-teal);
+  font-weight: 600;
+}
+
+.credit-disclaimer {
+  margin: var(--space-12) 0 0;
+  font-size: var(--text-base);
+  line-height: 1.5;
+  color: var(--dark-text);
+  text-wrap: pretty;
+}
+
+@media (max-width: 700px) {
+  .credit-rows > div {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-1) var(--space-3);
+  }
+  .credit-rows span {
+    grid-column: 1 / -1;
+  }
+  .credit-legend {
+    position: static;
+    margin-bottom: var(--space-3);
+    flex-wrap: wrap;
+  }
+  .credit-steps li {
+    grid-template-columns: 28px minmax(0, 1fr);
+    font-size: var(--text-base);
+  }
+  .credit-steps li span:last-child {
+    grid-column: 2;
+    color: var(--dark-teal);
+  }
+}
+
+/* --- Inicio: hero y franja de constancia -------------------------------- */
+
+.hero {
+  background-image: linear-gradient(118deg, #241052 0%, #3b1a86 40%, #653ac4 78%, #7a4fd4 100%);
+  color: #ffffff;
+  border-radius: var(--radius-lg);
+  padding: var(--space-8) var(--space-8) var(--space-12);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-8);
+  align-items: end;
+}
+.hero .eyebrow {
+  color: #d9ccf5;
+}
+.hero h1 {
+  margin: var(--space-3) 0 0;
+  font-size: clamp(1.9rem, 5vw, 3rem);
+  line-height: 1.1;
+  letter-spacing: -1.2px;
+}
+.hero > div > p:not(.eyebrow) {
+  margin: var(--space-3) 0 0;
+  color: rgba(255, 255, 255, 0.82);
+}
+.hero-balance {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  gap: var(--space-1);
+}
+.hero-balance > span {
+  font-size: var(--text-sm);
+  color: rgba(255, 255, 255, 0.82);
+}
+.hero-balance .balance {
+  font-size: clamp(1.8rem, 6vw, 3rem);
+  font-weight: 700;
+  letter-spacing: -1.4px;
+}
+.hero-balance .button.light {
+  margin-top: var(--space-4);
+  background: #ffffff;
+  color: var(--color-purple);
+}
+
+/* La franja monta sobre el hero: une visualmente el saldo con lo que ese
+   saldo significa para un crédito. */
+.streak {
+  margin-top: calc(var(--space-8) * -1.35);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8);
+  box-shadow: 0 1px 2px rgba(38, 34, 56, 0.05), 0 16px 40px rgba(59, 26, 134, 0.1);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.3fr);
+  gap: var(--space-8);
+  align-items: end;
+}
+.streak > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.streak > div + div {
+  padding-left: var(--space-8);
+  border-left: 1px solid var(--color-neutral-200);
+}
+.streak span {
+  font-size: var(--text-sm);
+  color: var(--color-neutral-500);
+}
+.streak strong {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  letter-spacing: -0.8px;
+}
+.streak strong .money {
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+}
+.streak strong.good {
+  color: var(--color-teal);
+}
+.streak strong.muted {
+  color: var(--color-neutral-500);
+}
+.streak a {
+  font-size: var(--text-base);
+  font-weight: 600;
+  line-height: 1.4;
+  text-wrap: pretty;
+  padding-bottom: var(--space-1);
+}
+.overview-grid.single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (max-width: 1000px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+    padding: var(--space-6);
+  }
+  .hero-balance {
+    align-items: flex-start;
+    text-align: left;
+  }
+  .streak {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-4);
+    padding: var(--space-6);
+  }
+  .streak > div + div {
+    padding-left: var(--space-4);
+  }
+  .streak a {
+    grid-column: 1 / -1;
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--color-neutral-200);
+  }
+}
+@media (max-width: 700px) {
+  .streak {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .streak > div + div {
+    padding-left: 0;
+    border-left: none;
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--color-neutral-200);
+  }
+}

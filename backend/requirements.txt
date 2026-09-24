@@ -2,3 +2,6 @@ Django>=5.2,<5.3
 djangorestframework>=3.16,<3.17
 psycopg[binary]>=3.2,<4
 django-cors-headers>=4.7,<5
+# Solo para la inferencia del modelo de credito: cuatro multiplicaciones de
+# matrices. El entrenamiento tambien usa numpy y se corre a mano.
+numpy>=2.0,<3

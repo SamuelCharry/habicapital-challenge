@@ -8,6 +8,7 @@ import Transfer from './pages/Transfer';
 import History from './pages/History';
 import SharedExpenseDetail from './pages/SharedExpenseDetail';
 import CreateSharedExpense from './pages/CreateSharedExpense';
+import CreditPath from './pages/CreditPath';
 import { AccountSwitcher } from './components/AccountSwitcher';
 import { EmptyState } from './components/EmptyState';
 import { Spinner } from './components/Spinner';
@@ -17,8 +18,11 @@ import { Button } from './components/Button';
 function Shell({ refresh }: { refresh: () => void }) {
   const { accounts, active, select } = useActiveAccount();
   const location = useLocation();
+  // La ruta al crédito es una habitación distinta: oscura y a sangre
+  // completa. Las otras cinco pantallas no cambian.
+  const dark = location.pathname === '/ruta';
   return (
-    <>
+    <div className={dark ? 'app app-dark' : 'app'}>
       <a className="skip-link" href="#main">
         Ir al contenido
       </a>
@@ -36,11 +40,12 @@ function Shell({ refresh }: { refresh: () => void }) {
             </NavLink>
             <NavLink to="/transfer">Transferir</NavLink>
             <NavLink to="/history">Historial</NavLink>
+            <NavLink to="/ruta">Tu ruta</NavLink>
           </nav>
           <AccountSwitcher accounts={accounts} value={active?.id || ''} onChange={select} />
         </div>
       </header>
-      <main id="main" className="shell" key={`${active?.id}:${location.pathname}:${location.search}`}>
+      <main id="main" className={location.pathname === '/ruta' ? 'shell shell-dark' : 'shell'} key={`${active?.id}:${location.pathname}:${location.search}`}>
         {!active ? (
           <EmptyState title="Todo empieza con una cuenta">
             <p>
@@ -54,6 +59,7 @@ function Shell({ refresh }: { refresh: () => void }) {
             <Route path="/" element={<Dashboard />} />
             <Route path="/transfer" element={<Transfer />} />
             <Route path="/history" element={<History />} />
+            <Route path="/ruta" element={<CreditPath />} />
             <Route path="/expenses/new" element={<CreateSharedExpense />} />
             <Route path="/expenses/:expenseId" element={<SharedExpenseDetail />} />
             <Route path="*" element={<Navigate to="/" replace />} />
@@ -64,7 +70,7 @@ function Shell({ refresh }: { refresh: () => void }) {
         <span>habi capital</span>
         <span>El dinero cuenta historias.</span>
       </footer>
-    </>
+    </div>
   );
 }
 export default function App() {

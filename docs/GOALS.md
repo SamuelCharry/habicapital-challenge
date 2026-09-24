@@ -14,6 +14,7 @@ Para el detalle de un goal en curso, ver `PLAN.md` en la raíz (se reescribe por
 | 4 | Frontend MVP | ✅ cerrado |
 | 5 | Endurecimiento adversarial + auditoría | ✅ cerrado |
 | 6 | README, decisiones y demo | ✅ cerrado |
+| 7 | Ruta al crédito con modelo de difusión | ✅ cerrado |
 
 ---
 
@@ -318,3 +319,34 @@ tres razones y la condición bajo la cual lo reconsideraría.
 **`docs/demo.md`** con los puntos para el video de 5 minutos, con tiempos por bloque. No es un
 guion: el reto prohíbe leer de uno.
 
+---
+
+### GOAL 7 — Tu ruta al crédito ✅
+
+**El pivote.** Gastos compartidos funcionaba, pero no tocaba el negocio de
+HabiCapital, que es el crédito hipotecario. En vez de borrarlo, lo subordiné: los
+gastos compartidos dejaron de ser el titular y pasaron a ser **la fuente de datos**.
+Cumplir con tu parte del arriendo es historial de pago; depositar cada mes es
+constancia de ahorro. Las dos cosas son justo lo que un originador quiere ver.
+
+**Qué se construyó.** Un modelo de difusión en numpy puro, entrenado sobre UCI
+German Credit, que sitúa a la persona en el mapa de perfiles y traza una ruta hacia
+una versión alcanzable de sí misma que sí calificaría. Más una pantalla oscura a
+sangre completa donde la nube de perfiles se condensa desde el ruido —que no es una
+animación de entrada: es lo que el modelo hace— y la ruta se dibuja encima.
+
+**Lo que hace honesta la pieza.** La reproyección sobre la variedad aprendida, que
+impide recomendar un punto donde no vive nadie. La declaración explícita de que esto
+no aprueba ni niega créditos. Y decir sin adornos que el dataset aporta la forma de
+la población pero que el mapeo del comportamiento colombiano a esos ejes lo definí
+yo.
+
+**Tres defectos que encontré y corregí durante el trabajo**, todos por medir en vez
+de mirar: el planificador de ruido dejaba 36% de señal al final de la cadena, así
+que muestrear desde ruido puro no era válido; la trayectoria salía en zigzag porque
+reproyectar es muestrear y muestrear mete ruido; y el camino pasaba por su mejor
+punto y después retrocedía, porque el destino era el promedio de un grupo.
+
+**Evidencia.** 185 tests. Los perfiles que el modelo genera quedan a distancia
+mediana 0,056 de uno real. El clasificador acierta 72,9% contra 70,0% de clase
+mayoritaria — modesto, y así está reportado.

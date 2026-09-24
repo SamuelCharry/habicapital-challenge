@@ -7,13 +7,18 @@ orden de lo que se muestra y la idea que va con cada paso. Habla con tus palabra
 
 ```sh
 docker compose up -d db
-cd backend && ../.venv/Scripts/python.exe manage.py migrate
+cd backend
+../.venv/Scripts/python.exe manage.py migrate
+../.venv/Scripts/python.exe scripts/seed_demo.py
 ```
 
-Sembrar datos limpios: cuatro cuentas (Samuel, Juan, Laura, Mariana) con saldo, el
-gasto "Cena del viernes" de $180.000 entre tres, y "Arriendo noviembre" de
-$2.400.000. Deja **el pago de Juan sin hacer** — lo haces en vivo, es el momento
-más importante del video.
+El sembrador crea cuatro cuentas con historial de varios meses: Samuel con 14,
+Juan con 9, Laura con 6, y **Mariana con 1 — que existe justamente para mostrar el
+estado de "sin evidencia suficiente"**. Más tres gastos compartidos y pagos
+parciales.
+
+Empieza el video con **Juan** activo: es el perfil que está cerca de calificar, o
+sea el que tiene una ruta interesante que mostrar.
 
 Ten abiertas tres cosas: el navegador, una terminal con `psql`, y otra terminal
 para los tests.
@@ -80,14 +85,41 @@ DELETE FROM persistence_ledgerentrymodel WHERE amount_minor > 0;
 Y los tests:
 
 ```sh
-pytest -q      # 159 passed
+pytest -q      # 185 passed
 ```
 
 > Lo que más me importa son los de concurrencia. Doce requests en paralelo con la
 > misma llave de idempotencia producen **una** transferencia. Diez transferencias
 > simultáneas contra un saldo que alcanza para una: pasa una sola.
 
-**4:10 — Una decisión y el flujo de IA** *(50s)*
+**3:40 — La ruta al crédito** *(60s)*
+
+Entra a "Tu ruta". La pantalla es oscura, a propósito: es otra habitación.
+
+Deja que la nube se condense sin hablar encima. Dura tres segundos y vale la pena.
+
+> Eso que acaba de pasar no es una animación de entrada. Es lo que hace el modelo:
+> parte de ruido y lo convierte en estructura. Cada punto es un perfil crediticio.
+
+Señala las cifras de arriba:
+
+> Estos cuatro números no se los pedí a Juan. Salen de su historial en la billetera:
+> nueve meses depositando, y cumplimiento del 100% en sus gastos compartidos.
+
+Mueve el deslizador de "Hoy" a "Calificas" y deja que se vean cambiar las cifras.
+
+> La línea no es una recta hacia el objetivo. En cada paso el modelo la reproyecta
+> sobre donde viven perfiles reales. Si no hiciera eso, la recomendación sería un
+> punto que voltea el clasificador pero que no describe a ninguna persona.
+
+Cambia a **Mariana** en el selector y vuelve a "Tu ruta":
+
+> Y cuando no hay evidencia suficiente, no le inventamos una ruta. Le decimos qué le
+> falta.
+
+Ese contraste vale más que cualquier explicación técnica.
+
+**4:40 — Una decisión y el flujo de IA** *(50s)*
 
 Elige **una** sola decisión. La mejor es el orden de los locks:
 
@@ -104,7 +136,7 @@ Y cierra con el flujo:
 > lo aprobé, y dos pasos después se descubrió que el primer depósito lo violaba. De
 > ahí salió la cuenta de sistema. Está documentado en el repo.
 
-**5:00 — Fin.**
+**5:20 — Fin.** Si te pasas, corta el núcleo del minuto 0:20.
 
 ## Reglas para grabar
 
@@ -115,13 +147,20 @@ Y cierra con el flujo:
 - No expliques las capas ni enumeres patrones: eso está en el README y aburre en
   video. Muestra el producto y **una** decisión técnica bien contada.
 
-## Si te sobra tiempo
+## Si te preguntan en la entrevista
 
-La vista previa del reparto: escribe $100.000 entre tres y muestra que da
-33.333,33 / 33.333,33 / **33.333,34**, y que el frontend y el backend coinciden
-hasta en a quién le toca el centavo. Es un detalle pequeño que dice mucho.
+**"¿Por qué difusión y no una regresión?"** Porque encontrar un cambio que voltee el
+clasificador es fácil y produce basura. Lo difícil es que el cambio corresponda a
+una persona que podría existir. El modelo aprende dónde vive la gente real y la ruta
+se reproyecta ahí en cada paso.
+
+**"¿Qué tan bueno es el clasificador?"** 72,9% contra 70,0% de predecir siempre la
+clase mayoritaria. Dilo tal cual, sin adornar: comprimir 20 atributos en dos ejes
+interpretables cuesta poder predictivo, y ese fue el intercambio.
+
+**"¿Esto decide créditos?"** No, y está escrito en la pantalla. Es exploratorio.
 
 ## Si te falta tiempo
 
 Corta el núcleo (minuto 0:20) y muestra solo saldo. Nunca cortes el momento del
-pago con contexto ni la query de conservación.
+pago con contexto, la query de conservación, ni el deslizador de la ruta.

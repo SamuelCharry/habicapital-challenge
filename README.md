@@ -1,7 +1,7 @@
 # habicapital-challenge
 
-Una billetera donde el dinero **conserva contexto**: puedes ver que esos $60.000 que
-enviaste son tu parte de la cena del viernes, no una línea suelta en un extracto.
+Una billetera donde el dinero conserva contexto, y donde ese contexto se convierte
+en **evidencia para tu crédito de vivienda**.
 
 Reto técnico para practicantes de HabiCapital, convocatoria 2027.
 
@@ -12,17 +12,62 @@ Reto técnico para practicantes de HabiCapital, convocatoria 2027.
 El núcleo que pedía el reto: crear cuenta, cargar saldo simulado, transferir entre
 cuentas, consultar saldo y ver historial.
 
-Encima, una sola cosa: **gastos compartidos**. Creas "Cena del viernes — $180.000"
-con tres personas, el sistema calcula que cada quien pone $60.000, y cuando alguien
-te transfiere su parte, el gasto sabe quién ya pagó y cuánto falta. El pago aparece
-en el historial **con el nombre del gasto**, no como una transferencia anónima.
+Encima, una sola cosa: **tu comportamiento con la plata del día a día se convierte
+en evidencia para tu crédito de vivienda.**
 
-Elegí eso porque el enunciado nombra el problema directamente: los bancos mueven
-plata pero no entienden que esos $50.000 son del cumpleaños de un amigo, y todo
-queda como líneas sueltas. Los cinco escenarios del reto —la cena, la mamá, los
-roommates, la profesora, los freelancers— son todos el mismo problema: plata entre
-personas que ya se conocen y que están de acuerdo en algo. El banco mueve el monto
-y pierde el acuerdo.
+La billetera ya registra dos cosas que un originador hipotecario quiere ver y que
+normalmente nadie puede demostrar: **cuánto ahorras con constancia** —que sale de
+tus depósitos a lo largo de los meses— y **si cumples con lo que debes**, que sale
+de los gastos compartidos. Un gasto compartido no es la funcionalidad estrella: es
+la fuente de datos. Pagar tu parte del arriendo cada mes es historial de pago con
+personas reales.
+
+Con eso, un **modelo de difusión** te sitúa dentro de la población de perfiles
+crediticios y te traza una ruta: qué versión alcanzable de ti mismo sí calificaría,
+y qué tendrías que cambiar para llegar ahí.
+
+Elegí esto porque HabiCapital reconstruye productos financieros alrededor de la
+vivienda **empezando por el crédito hipotecario**, y su problema no es mover plata:
+es que el proceso de saber si calificas sea rápido, con datos, y no una caja negra
+donde te dicen que no sin explicarte nada.
+
+### Por qué un modelo de difusión y no una regresión
+
+Encontrar un cambio que voltee un clasificador es fácil, y produce basura: "sube tus
+ingresos 40% y quítate ocho años". Lo difícil es encontrar un cambio que corresponda
+a **una persona que podría existir**, con ingresos, ahorro y estabilidad coherentes
+entre sí.
+
+Un modelo de difusión aprende exactamente eso: la variedad donde viven los perfiles
+reales. La ruta se construye reproyectando cada paso sobre esa variedad, así que
+pasa por donde de verdad hay gente en vez de cortar en línea recta por zonas vacías.
+Sin esa reproyección, la recomendación sería un ejemplo adversarial disfrazado de
+consejo financiero. Hay un test que lo comprueba: ningún punto de la ruta queda a
+más de 0.6 de un perfil real.
+
+Está escrito **a mano en numpy**, con la retropropagación derivada a mano: son unos
+18.000 parámetros y una dependencia de 200 MB costaría más de lo que da. El
+entrenamiento se corre aparte y deja un artefacto de 207 KB; el backend solo hace
+cuatro multiplicaciones de matrices.
+
+### Lo que este producto NO es
+
+No aprueba ni niega créditos, y la interfaz lo dice sin letra pequeña. Muestra
+escenarios a partir de comportamiento observado. El crédito está regulado y una
+herramienta que insinúe decisiones crediticias tiene implicaciones de equidad
+reales; preferí declarar el límite antes que rozarlo. Tampoco hay un puntaje en
+pantalla: en cuanto pintas "687 puntos", el producto deja de ser exploratorio.
+
+### De dónde salen los datos, sin adornos
+
+Del **UCI German Credit** (1.000 perfiles, 20 atributos, dominio público). Es alemán,
+de 1994, en marcos, y es crédito al consumo, no hipotecario. Lo uso por su
+**estructura**, no por sus montos.
+
+Y el supuesto más grande, que quiero decir en voz alta: **el dataset aporta la forma
+de la población y dónde está la frontera; la correspondencia entre el comportamiento
+de una persona en Colombia y esos ejes la definí yo.** Está en `domain/credit.py`
+con los rangos de referencia explícitos. No salió de los datos.
 
 ## Cómo lo corro
 
@@ -46,8 +91,17 @@ POSTGRES_PASSWORD=local-development-only POSTGRES_DB=habicapital \
 ../.venv/Scripts/python.exe -m pytest -v
 ```
 
-**159 tests.** 23 de dominio, 7 de aplicación (sin base de datos), 66 de
-integración y concurrencia, 4 de la fundación.
+**185 tests.** Dominio, aplicación (sin base de datos), integración, concurrencia
+con hilos reales, y once que validan el modelo de difusión contra una distribución
+conocida de antemano.
+
+Para el modelo hay dos comandos más, que se corren a mano:
+
+```sh
+cd backend
+../.venv/Scripts/python.exe scripts/train_credit_model.py   # entrena y guarda model.npz
+../.venv/Scripts/python.exe scripts/seed_demo.py            # datos de demo con 14 meses de historial
+```
 
 La comprobación que más me importa, contra la base directamente:
 
@@ -71,6 +125,12 @@ relacionales y no relacionales" y nada más.
 **React + TypeScript.** Es el lado de frontend del stack que describen, y TypeScript
 me deja modelar los montos como `bigint` para que el compilador impida que alguien
 los convierta a punto flotante.
+
+**numpy, y nada más de machine learning.** El modelo son ~18.000 parámetros. PyTorch
+pesa 200 MB y habría entrado a CI y a la imagen de producción para hacer cuatro
+multiplicaciones de matrices. Escribirlo a mano me costó una tarde y me deja poder
+explicar cada línea, que en una entrevista de pair programming vale más que la
+comodidad.
 
 **Monolito modular.** Múltiples servicios harían que una transferencia cruce un
 límite de red, y entonces "la plata no se pierde" pasaría a depender de
@@ -197,6 +257,33 @@ que hay tráfico.
 
 Y después de todo lo anterior, la suma global del ledger sigue siendo `0`.
 
+### Y el modelo, ¿cómo sé que no es humo?
+
+Un modelo generativo no se valida leyendo el código. Se valida entrenándolo sobre
+una distribución **cuya forma conozco de antemano** y comprobando que la reproduce.
+Once tests hacen eso con las dos medialunas entrelazadas, el ejemplo canónico:
+
+- Las muestras generadas caen sobre la distribución, no en una nube difusa alrededor
+  del promedio: mediana de distancia al punto real más cercano por debajo de 0,2.
+- **Aparecen las dos medialunas, no una.** El colapso de modos es la forma típica en
+  que un modelo generativo falla pareciendo que funciona.
+- Un punto inventado en una zona vacía se corrige hacia donde hay datos, reduciendo
+  su distancia a la variedad en más del 75%. Eso es lo que impide que la
+  recomendación sea un consejo imposible.
+- La retropropagación, que está derivada a mano, reduce la pérdida a menos de la
+  mitad. Si tuviera un signo cambiado, ninguna revisión de código lo habría notado.
+
+Y sobre el modelo que de verdad se sirve: los 2.500 perfiles que genera quedan a una
+distancia mediana de **0,056** de un perfil real del dataset. Están dibujados en el
+mapa, superpuestos a los reales — si el modelo no hubiera aprendido la distribución,
+formarían una nube aparte y se vería.
+
+Un detalle que encontré así: un test mío afirmaba que el planificador de ruido
+destruía la señal, y falló. Tenía razón el test. Con 200 pasos, el `beta` habitual
+de DDPM —pensado para 1.000— dejaba un 36% de señal al final de la cadena, así que
+muestrear desde ruido puro no era válido. Lo corregí y la pérdida bajó de 0,52 a
+0,31 de paso.
+
 ## 3. Qué dejé fuera y por qué
 
 **Autenticación.** No hay login ni contraseñas. El frontend tiene un selector de
@@ -221,6 +308,11 @@ existen para detectar. En producción, con una política pensada, cambiaría.
 
 **Tests de frontend.** El backend es donde vive la plata y ahí está la suite. El
 frontend lo verifiqué a mano en el navegador. Es la deuda más clara que dejo.
+
+**Validación seria del modelo.** Sin validación cruzada, sin conjunto de prueba
+separado, sin métricas de calidad generativa más allá de las que describo abajo, y
+sin auditoría de sesgo. Con un día no cabía, y prefiero decirlo a insinuar rigor que
+no hice.
 
 ## 4. Qué haría distinto con más tiempo
 
@@ -266,6 +358,23 @@ fallar en producción no tendría forma de enterarme antes que el usuario.
 
 **No sé si la extensión que elegí es la que más valor agrega.** Me convenció porque
 el enunciado apunta directo a ella, pero no hablé con nadie que tenga el problema.
+
+**No sé qué tan bueno es mi clasificador, y sé que no es muy bueno.** Acierta 72,9%
+contra 70,0% de predecir siempre la clase mayoritaria. Son 2,9 puntos. Comprimir 20
+atributos en dos ejes interpretables cuesta poder predictivo, y ese es el precio que
+pagué por poder explicar qué significa cada eje. No medí con validación cruzada ni
+separé conjunto de prueba, así que ese número es optimista.
+
+**No sé si mi mapeo de comportamiento colombiano a los ejes del dataset es
+razonable.** Los rangos de referencia —que 1.500.000 mensuales sea el extremo alto
+de capacidad, que 24 meses sea el extremo alto de constancia— los elegí yo con
+criterio propio. Un analista de riesgo los miraría y probablemente los cambiaría.
+
+**No sé si el modelo tiene sesgos.** El German Credit contiene edad y estado civil, y
+es el dataset canónico de la literatura de equidad algorítmica justamente porque los
+tiene. Excluí esos atributos de mis dos ejes, pero no medí si se filtran por
+correlación con los que sí uso. Es lo primero que auditaría antes de que esto tocara
+a un usuario real.
 
 ## 6. Los supuestos que hice
 
@@ -387,6 +496,19 @@ una funcionalidad; prueba que un fallo *no* se propaga. Y es lo único que justi
 que ahí haya un evento en vez de una llamada directa. Sin ese test, el patrón sería
 decoración — y creo que eso aplica a casi cualquier patrón.
 
+**Que un modelo de difusión es mucho más simple de lo que su reputación sugiere.**
+Lo había visto siempre como algo de imágenes y GPUs. Escribirlo desde cero —agregar
+ruido, aprender a predecirlo, y caminar la cadena al revés— son unas 150 líneas, y
+entender que el modelo aprende *la variedad donde viven los datos* fue lo que me
+hizo ver para qué sirve aquí: no para predecir, sino para que una recomendación
+caiga sobre gente que podría existir.
+
+**Que derivar la retropropagación a mano enseña más que usar un framework.** Tuve
+que escribir la derivada de cada capa. La primera versión estaba mal y lo supe
+porque el modelo no reproducía las dos medialunas, no porque el código se viera
+raro. Esa es la lección: el test contra una distribución conocida es lo que hace
+verificable algo que de otro modo es fe.
+
 **Sobre trabajar con IA:** que el valor no está en que escriba código rápido, sino en
 poner restricciones tan explícitas que las contradicciones salgan a la superficie.
 Las tres veces que este flujo me salvó de un error, fue porque un agente chocó
@@ -398,13 +520,18 @@ errores eran míos.
 ## Estructura
 
 ```
-backend/src/
-  domain/          Money, Account, LedgerEntry, split, eventos. Sin Django.
-  application/     Commands, servicios, facade. Dueño del límite transaccional.
-  infrastructure/  ORM, repositorios, migraciones. Único lugar con FOR UPDATE.
-  presentation/    Controladores y serializers. Sin reglas de negocio.
-frontend/src/      Cinco pantallas + tokens de tema.
-docs/              Decisiones de arquitectura, bitácora de IA, seguimiento de goals.
+backend/
+  src/domain/          Money, Account, LedgerEntry, split, eventos, perfil
+                       crediticio. Python puro, sin Django y sin numpy.
+  src/application/     Commands, servicios, facade. Dueño del límite transaccional.
+  src/infrastructure/  ORM, repositorios, migraciones. Único lugar con FOR UPDATE.
+                       Y credit/: el modelo de difusión y su artefacto.
+  src/presentation/    Controladores y serializers. Sin reglas de negocio.
+  scripts/             Entrenamiento del modelo y siembra de datos de demo.
+                       Se corren a mano, nunca en el camino de un request.
+  data/                UCI German Credit, tal como se descarga.
+frontend/src/          Seis pantallas + tokens de tema.
+docs/                  Decisiones de arquitectura, bitácora de IA, goals, demo.
 ```
 
 Las dependencias apuntan hacia adentro. Un test recorre `src/domain/` y falla si

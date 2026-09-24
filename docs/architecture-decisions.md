@@ -249,3 +249,54 @@ transferencias cruzadas simultáneas: cero deadlocks.
 como error. Esa maquinaria escondería justo las carreras que los tests existen para
 detectar. Es una decisión para este contexto: en producción, con una política de
 reintentos pensada, cambiaría.
+
+---
+
+## El modelo de difusión: por qué está ahí y por qué está escrito a mano
+
+**Problema.** Recomendarle a alguien cómo mejorar su perfil de crédito es fácil de
+hacer mal. Un contrafactual ingenuo busca el cambio mínimo que voltea el
+clasificador, y eso produce puntos que no corresponden a ninguna persona real:
+ingresos altísimos con ahorro nulo, o estabilidad perfecta con capacidad de pago
+inexistente. Técnicamente vuelven verde el semáforo; como consejo son inútiles.
+
+**Por qué difusión encaja.** Un modelo de difusión aprende la variedad donde viven
+los perfiles reales. Reproyectar cada paso de la ruta sobre esa variedad es lo que
+hace que el camino pase por donde de verdad hay gente. No es el clasificador —ese
+es una regresión logística de seis términos— es el generador de trayectorias
+plausibles.
+
+**Dónde vive.** `infrastructure/credit/diffusion.py` para la inferencia,
+`scripts/train_credit_model.py` para el entrenamiento. La traducción de
+comportamiento a coordenadas está en `domain/credit.py`, en Python puro y sin
+numpy: son reglas de negocio, no matemática.
+
+**Escrito a mano, sin framework.** El denoiser son ~18.000 parámetros: dos capas
+ocultas de 128 con tanh y codificación sinusoidal del paso de ruido. PyTorch pesa
+200 MB y habría entrado a CI y a la imagen de producción para hacer cuatro
+multiplicaciones de matrices. El entrenamiento produce un artefacto de 207 KB y el
+backend solo lo ejecuta hacia adelante.
+
+**Cómo se verifica algo generativo.** No leyendo el código. Once tests entrenan el
+mismo modelo sobre dos medialunas entrelazadas —una distribución cuya forma conozco
+de antemano— y comprueban que la reproduce, que aparecen **las dos** y no una sola
+(el colapso de modos es la forma típica de fallar pareciendo que funciona), y que un
+punto inventado en zona vacía se corrige hacia donde hay datos. La primera versión
+de la retropropagación estaba mal y lo supe por esos tests, no por revisar el código.
+
+**Costo.** Es la pieza con más matemática del repositorio y la que más cuesta
+explicar. Lo acepto porque es la que sostiene la única afirmación no trivial del
+producto: que la recomendación es alcanzable.
+
+**Alternativa más simple que descarté.** Una regla fija: "ahorra 20% más y espera
+seis meses". No necesita modelo, se explica en una frase, y es lo que yo haría si
+esto tuviera que salir mañana a producción con supervisión humana. Lo descarté
+porque no usa la información de qué combinaciones de capacidad y estabilidad
+existen de verdad, que es justamente lo que hace que un consejo sea creíble.
+
+**Un límite que dejo escrito.** El modelo opera sobre una proyección a dos
+dimensiones, no sobre los 20 atributos. Esa simplificación es lo que permite que el
+mapa muestre exactamente lo que el modelo calcula, sin una capa de traducción que
+pueda mentir — y es también la razón por la que la herramienta es exploratoria y no
+precisa. El clasificador acierta 72,9% contra un 70,0% de clase mayoritaria:
+comprimir 20 atributos en dos ejes interpretables cuesta poder predictivo.

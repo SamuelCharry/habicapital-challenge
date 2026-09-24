@@ -45,8 +45,12 @@ def test_money_exact_arithmetic_and_decimal_construction():
 def test_domain_does_not_import_django():
     root = Path(__file__).resolve().parents[2] / "src" / "domain"
     files = list(root.rglob("*.py"))
-    assert {p.name for p in files} >= {"money.py", "entities.py", "factories.py", "repositories.py"}
-    forbidden = ("django", "rest_framework", "src.infrastructure", "infrastructure")
+    assert {p.name for p in files} >= {"money.py", "entities.py", "factories.py", "repositories.py", "credit.py"}
+    # numpy entra a la lista con el modelo de credito: el dominio traduce
+    # comportamiento a coordenadas con aritmetica normal, y la matematica del
+    # modelo vive en infraestructura. Si numpy se filtra aqui, la frontera se
+    # rompio.
+    forbidden = ("django", "rest_framework", "src.infrastructure", "infrastructure", "numpy")
     for path in files:
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):

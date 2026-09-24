@@ -124,3 +124,36 @@ class SharedExpenseSerializer(serializers.Serializer):
     participants = ParticipantSerializer(many=True)
     outstanding_total_minor = StrictIntegerField()
     settled = serializers.BooleanField()
+
+
+class CreditProfileSerializer(serializers.Serializer):
+    monthly_savings_minor = StrictIntegerField(source='monthly_savings.amount_minor')
+    months_consistent = StrictIntegerField()
+    compliance_ratio = serializers.FloatField(allow_null=True)
+    down_payment_minor = StrictIntegerField(source='down_payment.amount_minor')
+    currency = serializers.CharField(source='monthly_savings.currency')
+
+
+class WaypointSerializer(serializers.Serializer):
+    capacity = serializers.FloatField()
+    stability = serializers.FloatField()
+    qualify_probability = serializers.FloatField()
+    monthly_savings_minor = StrictIntegerField(source='monthly_savings.amount_minor')
+    months_consistent = StrictIntegerField()
+
+
+class StepSerializer(serializers.Serializer):
+    order = StrictIntegerField()
+    action = serializers.CharField()
+    magnitude = serializers.CharField()
+
+
+class CreditPathSerializer(serializers.Serializer):
+    profile = CreditProfileSerializer()
+    has_enough_evidence = serializers.BooleanField()
+    headline = serializers.CharField()
+    # Cada punto es [capacidad, estabilidad, probabilidad de calificar].
+    population = serializers.ListField(child=serializers.ListField(child=serializers.FloatField()))
+    generated = serializers.ListField(child=serializers.ListField(child=serializers.FloatField()))
+    trajectory = WaypointSerializer(many=True)
+    steps = StepSerializer(many=True)

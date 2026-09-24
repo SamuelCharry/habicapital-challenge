@@ -1,17 +1,24 @@
 from uuid import UUID
 
 from src.domain.money import Money
+from src.domain.credit import CreditProfile
+from .credit_service import CreditPath, CreditPathService
 from .commands import CreateAccountCommand, DepositCommand, TransferCommand, CreateSharedExpenseCommand
 from .services import AccountBalance, AccountService, DepositResult, DepositService, HistoryItem, TransferResult, TransferService, SharedExpenseService
 from src.domain.shared_expenses import SharedExpense
 
 
 class WalletFacade:
-    def __init__(self, accounts: AccountService, deposits: DepositService, transfers: TransferService, expenses: SharedExpenseService):
+    def __init__(
+        self, accounts: AccountService, deposits: DepositService,
+        transfers: TransferService, expenses: SharedExpenseService,
+        credit: CreditPathService,
+    ):
         self.accounts = accounts
         self.deposits = deposits
         self.transfers = transfers
         self.expenses = expenses
+        self.credit = credit
 
     def create_account(self, handle: str, display_name: str) -> AccountBalance:
         return self.accounts.create(CreateAccountCommand(handle, display_name))
@@ -54,3 +61,9 @@ class WalletFacade:
 
     def list_shared_expenses(self, account_id: UUID | None = None) -> list[SharedExpense]:
         return self.expenses.list_expenses(account_id)
+
+    def credit_path(self, account_id: UUID) -> CreditPath:
+        return self.credit.path_for(account_id)
+
+    def credit_profile(self, account_id: UUID) -> CreditProfile:
+        return self.credit.profile_for(account_id)

@@ -1,5 +1,7 @@
 ﻿import type {
   Account,
+  CreditPath,
+  CreditSummary,
   Balance,
   ExpenseInput,
   Movement,
@@ -10,16 +12,29 @@
 
 const baseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '');
 
+// Marca los enteros que se protegieron antes de parsear. Va escrito como
+// escape \u0000 dentro del JSON: un carácter de control crudo dentro de una
+// cadena haría fallar a JSON.parse, y ningún valor real del servidor empieza
+// con él.
+const INTEGER_TAG = '\u0000';
+
 export function decodeResponse(text: string): unknown {
-  // Protect integer tokens BEFORE JSON.parse; strings are consumed first.
+  // Los enteros se envuelven en comillas ANTES de JSON.parse porque un número
+  // de JavaScript pierde precisión pasado 2^53 y un monto tiene que llegar
+  // intacto. Las cadenas se consumen primero para no tocar dígitos que ya
+  // vivían dentro de un texto.
   const exact = text.replace(/"(?:\\.|[^"\\])*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/g, token =>
-    /^-?\d+$/.test(token) ? `"${token}"` : token,
+    /^-?\d+$/.test(token) ? `"\\u0000${token}"` : token,
   );
   return JSON.parse(exact, (key, value: unknown) => {
-    if (!key.endsWith('_minor')) return value;
-    if (typeof value !== 'string' || !/^-?\d+$/.test(value))
-      throw new Error('El servidor devolvió un importe inválido.');
-    return BigInt(value);
+    if (typeof value !== 'string' || !value.startsWith(INTEGER_TAG)) {
+      if (key.endsWith('_minor')) throw new Error('El servidor devolvió un importe inválido.');
+      return value;
+    }
+    const digits = value.slice(INTEGER_TAG.length);
+    // El dinero va a bigint; cualquier otro entero vuelve a ser un número
+    // normal, o llegaría a los componentes convertido en cadena.
+    return key.endsWith('_minor') ? BigInt(digits) : Number(digits);
   });
 }
 
@@ -93,4 +108,6 @@ export const api = {
   expense: (id: string) => request<SharedExpense>(`/shared-expenses/${id}/`),
   createExpense: (body: ExpenseInput) => request<SharedExpense>('/shared-expenses/', body),
   transfer: (body: TransferInput) => request<TransferResult>('/transfers/', body),
+  creditProfile: (id: string) => request<CreditSummary>(`/accounts/${id}/credit-profile/`),
+  creditPath: (id: string) => request<CreditPath>(`/accounts/${id}/credit-path/`),
 };

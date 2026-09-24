@@ -8,6 +8,7 @@ from src.presentation.controllers.accounts import (
     DepositsView,
     HistoryView,
 )
+from src.presentation.controllers.credit import CreditPathView, CreditProfileView
 from src.presentation.controllers.health import HealthView
 from src.presentation.controllers.shared_expenses import (
     AccountSharedExpensesView,
@@ -32,6 +33,16 @@ urlpatterns = [
         'api/accounts/<uuid:account_id>/shared-expenses/',
         AccountSharedExpensesView.as_view(),
         name='account-shared-expenses',
+    ),
+    path(
+        'api/accounts/<uuid:account_id>/credit-path/',
+        CreditPathView.as_view(),
+        name='account-credit-path',
+    ),
+    path(
+        'api/accounts/<uuid:account_id>/credit-profile/',
+        CreditProfileView.as_view(),
+        name='account-credit-profile',
     ),
     path('api/transfers/', TransfersView.as_view(), name='transfers'),
     path('api/shared-expenses/', SharedExpensesView.as_view(), name='shared-expenses'),

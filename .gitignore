@@ -32,3 +32,6 @@ Thumbs.db
 # El enunciado del reto es material de HabiCapital. Lo conservo localmente
 # como fuente de verdad, pero no lo redistribuyo en un repo publico.
 reto-tecnico-*.pdf
+
+# El zip descargado; el .data extraido si se versiona para poder reentrenar.
+backend/data/*.zip

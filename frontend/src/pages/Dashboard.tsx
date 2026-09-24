@@ -10,29 +10,37 @@ import { EmptyState } from '../components/EmptyState';
 import { ErrorBanner } from '../components/ErrorBanner';
 import { Spinner } from '../components/Spinner';
 import { people } from '../utils/money';
+import { SavingsStreak } from '../components/SavingsStreak';
 
 export default function Dashboard() {
   const { active } = useActiveAccount();
   const id = active!.id;
   const load = useCallback(async () => {
-    const [balance, history, expenses] = await Promise.all([
+    const [balance, history, expenses, summary] = await Promise.all([
       api.balance(id),
       api.history(id),
       api.expenses(id),
+      api.creditProfile(id),
     ]);
-    return { balance, history, expenses };
+    return { balance, history, expenses, summary };
   }, [id]);
   const { data, loading, error, retry } = useLoad(load);
   return (
     <>
-      <div className="page-heading">
+      <section className="hero">
         <div>
           <p className="eyebrow">TU DINERO, CON CONTEXTO</p>
-          <h1>Hola, {active!.display_name.split(' ')[0]}</h1>
+          <h1>Hola, {active!.display_name.split(' ')[0]}.</h1>
           <p>Las cuentas claras. Los planes, compartidos.</p>
         </div>
-        <span className="currency-pill">COP · Peso colombiano</span>
-      </div>
+        <div className="hero-balance">
+          <span>Saldo disponible · @{active!.handle}</span>
+          {data && <Money className="balance" amount={data.balance.balance_minor} />}
+          <Link className="button light" to="/transfer">
+            Transferir dinero
+          </Link>
+        </div>
+      </section>
       {loading ? (
         <Spinner />
       ) : error ? (
@@ -40,15 +48,8 @@ export default function Dashboard() {
       ) : (
         data && (
           <>
-            <div className="overview-grid">
-              <Card className="balance-card">
-                <p>Saldo disponible</p>
-                <Money className="balance" amount={data.balance.balance_minor} />
-                <span>@{active!.handle}</span>
-                <Link className="button light" to="/transfer">
-                  Transferir dinero <span aria-hidden="true">↗</span>
-                </Link>
-              </Card>
+            <SavingsStreak summary={data.summary} />
+            <div className="overview-grid single">
               <Card className="context-card">
                 <span className="context-symbol" aria-hidden="true">
                   ◈
