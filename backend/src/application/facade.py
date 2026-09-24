@@ -1,14 +1,15 @@
 from uuid import UUID
 
 from src.domain.money import Money
-from .commands import CreateAccountCommand, DepositCommand
-from .services import AccountBalance, AccountService, DepositResult, DepositService, HistoryItem
+from .commands import CreateAccountCommand, DepositCommand, TransferCommand
+from .services import AccountBalance, AccountService, DepositResult, DepositService, HistoryItem, TransferResult, TransferService
 
 
 class WalletFacade:
-    def __init__(self, accounts: AccountService, deposits: DepositService):
+    def __init__(self, accounts: AccountService, deposits: DepositService, transfers: TransferService):
         self.accounts = accounts
         self.deposits = deposits
+        self.transfers = transfers
 
     def create_account(self, handle: str, display_name: str) -> AccountBalance:
         return self.accounts.create(CreateAccountCommand(handle, display_name))
@@ -27,3 +28,11 @@ class WalletFacade:
 
     def deposit(self, account_id: UUID, amount_minor: int, currency: str) -> DepositResult:
         return self.deposits.deposit(DepositCommand(account_id, Money(amount_minor, currency)))
+
+    def transfer(
+        self, source_account_id: UUID, destination_account_id: UUID,
+        amount_minor: int, currency: str, idempotency_key: str,
+    ) -> TransferResult:
+        return self.transfers.transfer(TransferCommand(
+            source_account_id, destination_account_id, Money(amount_minor, currency), idempotency_key,
+        ))

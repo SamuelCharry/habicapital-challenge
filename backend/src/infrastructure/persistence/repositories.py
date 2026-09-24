@@ -4,11 +4,11 @@ from uuid import UUID
 from django.db import IntegrityError, connection
 from django.db.models import Sum
 
-from src.domain.entities import Account, EXTERNAL_FUNDING_ID, LedgerEntry
-from src.domain.errors import AccountNotFound, DuplicateHandle
+from src.domain.entities import Account, EXTERNAL_FUNDING_ID, LedgerEntry, TransferOperation
+from src.domain.errors import AccountNotFound, DuplicateHandle, DuplicateIdempotencyKey
 from src.domain.money import Money
-from src.domain.repositories import AccountRepository, LedgerRepository
-from .models import AccountModel, LedgerEntryModel
+from src.domain.repositories import AccountRepository, LedgerRepository, TransferOperationRepository
+from .models import AccountModel, LedgerEntryModel, TransferOperationModel
 
 
 def account_entity(row: AccountModel) -> Account:
@@ -16,6 +16,13 @@ def account_entity(row: AccountModel) -> Account:
 
 
 class DjangoAccountRepository(AccountRepository):
+    def lock_for_update(self, account_ids: Sequence[UUID]) -> list[Account]:
+        ids = set(account_ids)
+        rows = list(AccountModel.objects.filter(pk__in=ids).order_by("id").select_for_update())
+        if len(rows) != len(ids):
+            raise AccountNotFound("Account does not exist.")
+        return [account_entity(row) for row in rows]
+
     def add(self, account: Account) -> Account:
         try:
             AccountModel.objects.create(
@@ -81,3 +88,36 @@ class DjangoLedgerRepository(LedgerRepository):
     def total_balance(self) -> Money:
         total = LedgerEntryModel.objects.aggregate(total=Sum("amount_minor"))["total"]
         return Money(int(total or 0))
+
+
+class DjangoTransferOperationRepository(TransferOperationRepository):
+    def claim(self, key: str, fingerprint: str, operation_id: UUID) -> None:
+        if not connection.in_atomic_block:
+            raise RuntimeError("Transfer claims require an application transaction.")
+        try:
+            TransferOperationModel.objects.create(
+                idempotency_key=key, request_fingerprint=fingerprint, operation_id=operation_id,
+            )
+        except IntegrityError as exc:
+            cause = exc.__cause__
+            constraint = getattr(getattr(cause, "diag", None), "constraint_name", None)
+            if getattr(cause, "sqlstate", None) == "23505" and constraint == "transfer_idempotency_key_unique":
+                raise DuplicateIdempotencyKey("Idempotency key already exists.") from exc
+            raise
+
+    def get(self, key: str) -> TransferOperation:
+        row = TransferOperationModel.objects.get(idempotency_key=key)
+        return TransferOperation(
+            row.idempotency_key, row.request_fingerprint, row.operation_id,
+            Money(int(row.source_balance_minor), row.currency),
+            Money(int(row.destination_balance_minor), row.currency),
+        )
+
+    def complete(self, key: str, source_balance: Money, destination_balance: Money) -> None:
+        if not connection.in_atomic_block:
+            raise RuntimeError("Transfer results require an application transaction.")
+        TransferOperationModel.objects.filter(idempotency_key=key).update(
+            source_balance_minor=source_balance.amount_minor,
+            destination_balance_minor=destination_balance.amount_minor,
+            currency=source_balance.currency,
+        )

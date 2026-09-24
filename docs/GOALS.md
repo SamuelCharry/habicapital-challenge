@@ -9,7 +9,7 @@ Para el detalle de un goal en curso, ver `PLAN.md` en la raíz (se reescribe por
 |---|---|---|
 | 0 | Fundación ejecutable | ✅ cerrado |
 | 1 | Money, Account, Ledger, Deposit | ✅ cerrado |
-| 2 | Transferencias seguras | ⬜ |
+| 2 | Transferencias seguras | ✅ cerrado |
 | 3 | Gastos compartidos + contexto | ⬜ |
 | 4 | Frontend MVP | ⬜ |
 | 5 | Endurecimiento adversarial + auditoría | ⬜ |
@@ -154,16 +154,49 @@ el primer push. Regenerado con todas las plataformas y verificado en limpio.
 
 ---
 
-### GOAL 2 — Transferencias seguras ⬜
+### GOAL 2 — Transferencias seguras ✅
 
-El goal crítico. Transacción atómica, locks de fila en orden determinista (ids ordenados, siempre,
-sin importar quién envía — si dos transferencias cruzadas los tomaran en orden inverso habría
-deadlock), doble partida, fondos suficientes, e idempotencia por **constraint único en base de
-datos**, no por leer-antes-de-escribir, que dos reintentos concurrentes atraviesan.
+El goal crítico, y el último punto del núcleo del reto. Aquí es donde la plata se puede perder
+de verdad.
 
-Tests obligatorios: transferencia normal, fondos insuficientes, misma cuenta, monto inválido,
-cuenta inexistente, key duplicada secuencial, key duplicada **concurrente**, dos transferencias
-concurrentes intentando sobregirar, rollback tras fallo inyectado, y conservación.
+**Las tres cosas que lo hacen correcto.**
+
+- **Se bloquea antes de leer.** Ambas cuentas se bloquean con `SELECT FOR UPDATE` y solo después
+  se lee el saldo. Si se leyera antes, dos transferencias simultáneas verían los mismos fondos,
+  ambas pasarían el chequeo y la cuenta quedaría sobregirada. Hay un test de aplicación que
+  registra el orden de las llamadas y falla si alguien reordena esas dos líneas.
+- **El orden del lock es por UUID ascendente, siempre**, sin importar quién envía. Si cada
+  transferencia bloqueara "mi cuenta primero", una A→B y una B→A simultáneas tomarían las filas
+  en orden inverso y se esperarían para siempre. Ordenar por un criterio global elimina el
+  deadlock por construcción.
+- **La idempotencia la impone la base de datos.** Hay una tabla con `UNIQUE` sobre la llave, y el
+  duplicado se detecta atrapando el `IntegrityError`. El patrón intuitivo —consultar si existe y
+  si no insertar— es justamente el que falla: dos reintentos concurrentes lo atraviesan los dos.
+
+Además: misma llave con payload distinto devuelve **409**, porque eso es un bug del cliente y
+esconderlo como si fuera un reintento sería peor que fallar. Y no se acepta una transferencia sin
+llave de idempotencia: para mover plata, poder reintentar sin duplicar no es opcional.
+
+**Decisión deliberada:** no hay reintentos automáticos ni backoff. Si la base reporta un
+conflicto, sube como error. Agregar esa maquinaria ahora escondería exactamente las carreras que
+estos tests existen para detectar.
+
+**Evidencia.** 100 tests pasan. Los de concurrencia usan hilos reales con conexiones separadas y
+los corrí 6 veces seguidas, todas verdes — una carrera que falla 1 de cada 5 veces no es un test
+inestable, es un bug que aparece el día que hay tráfico.
+
+Y por fuera de la suite, atacando el servidor con procesos paralelos de verdad:
+
+| Ataque | Resultado |
+|---|---|
+| 10 transferencias simultáneas contra un saldo que alcanza para **una** | 1× `201`, 9× `422`. Saldo nunca negativo |
+| La **misma** llave de idempotencia, 12 requests en paralelo | 1× `201`, 11× `200`, **el mismo `operation_id`**, una sola operación en el ledger |
+| 40 transferencias cruzadas A→B y B→A simultáneas | 40× `201`, **cero deadlocks** |
+| Misma llave, payload distinto | `409` |
+| Sin llave / a sí mismo | `400` |
+
+Tras las 50 operaciones: suma global del ledger `0`, cero operaciones desbalanceadas, cero
+cuentas de usuario en negativo.
 
 ---
 

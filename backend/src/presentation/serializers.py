@@ -66,3 +66,26 @@ class HistorySerializer(serializers.Serializer):
     currency = serializers.CharField(source="entry.money.currency")
     created_at = serializers.DateTimeField(source="entry.created_at")
     counterparty_handle = serializers.CharField()
+
+
+class IdempotencyKeyField(serializers.CharField):
+    def to_internal_value(self, data):
+        if not isinstance(data, str):
+            self.fail("invalid")
+        return super().to_internal_value(data)
+
+
+class TransferSerializer(serializers.Serializer):
+    source_account_id = serializers.UUIDField()
+    destination_account_id = serializers.UUIDField()
+    amount_minor = StrictIntegerField(max_value=2**63 - 1)
+    currency = serializers.ChoiceField(choices=["COP"])
+    idempotency_key = IdempotencyKeyField(min_length=8, max_length=128, trim_whitespace=False)
+
+
+class TransferResultSerializer(serializers.Serializer):
+    operation_id = serializers.UUIDField()
+    source_balance_minor = StrictIntegerField(source="source_balance.amount_minor")
+    destination_balance_minor = StrictIntegerField(source="destination_balance.amount_minor")
+    currency = serializers.CharField(source="source_balance.currency")
+    replayed = serializers.BooleanField()

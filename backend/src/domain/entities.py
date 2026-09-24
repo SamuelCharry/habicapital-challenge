@@ -36,3 +36,12 @@ class LedgerEntry:
     operation_type: str
     money: Money
     created_at: datetime
+
+
+@dataclass(frozen=True)
+class TransferOperation:
+    idempotency_key: str
+    request_fingerprint: str
+    operation_id: UUID
+    source_balance: Money
+    destination_balance: Money

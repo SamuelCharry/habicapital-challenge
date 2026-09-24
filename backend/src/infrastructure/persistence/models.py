@@ -38,3 +38,20 @@ class LedgerEntryModel(models.Model):
             models.CheckConstraint(condition=~models.Q(amount_minor=0), name="ledger_nonzero_amount"),
             models.UniqueConstraint(fields=["operation_id", "account"], name="ledger_operation_account_unique"),
         ]
+
+
+class TransferOperationModel(models.Model):
+    idempotency_key = models.CharField(max_length=128)
+    request_fingerprint = models.CharField(max_length=64)
+    operation_id = models.UUIDField(unique=True)
+    # Balances may exceed one entry's bigint range. Decimal fields preserve
+    # integer precision without imposing that entry limit on ledger totals.
+    source_balance_minor = models.DecimalField(max_digits=40, decimal_places=0, null=True)
+    destination_balance_minor = models.DecimalField(max_digits=40, decimal_places=0, null=True)
+    currency = models.CharField(max_length=3, default="COP")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["idempotency_key"], name="transfer_idempotency_key_unique"),
+            models.CheckConstraint(condition=models.Q(currency="COP"), name="transfer_currency_cop"),
+        ]

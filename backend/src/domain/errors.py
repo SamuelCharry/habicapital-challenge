@@ -20,3 +20,23 @@ class AccountNotFound(DomainError):
 
 class DuplicateHandle(DomainError):
     pass
+
+
+class InvalidTransfer(DomainError):
+    pass
+
+
+class InsufficientFunds(DomainError):
+    pass
+
+
+class SameAccountTransfer(DomainError):
+    pass
+
+
+class IdempotencyConflict(DomainError):
+    pass
+
+
+class DuplicateIdempotencyKey(DomainError):
+    pass

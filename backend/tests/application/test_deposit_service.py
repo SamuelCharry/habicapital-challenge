@@ -55,6 +55,9 @@ class FakeAccounts(AccountRepository):
         self.get(account_id)
         return Money(sum(e.money.amount_minor for e in self.ledger.entries_for(account_id)))
 
+    def lock_for_update(self, account_ids):
+        return [self.get(account_id) for account_id in sorted(set(account_ids))]
+
 
 def service():
     ledger = FakeLedger()
