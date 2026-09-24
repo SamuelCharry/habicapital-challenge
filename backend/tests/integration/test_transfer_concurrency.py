@@ -3,6 +3,7 @@ from threading import Barrier
 from uuid import UUID
 
 import pytest
+from rest_framework.test import APIClient
 from django.db import close_old_connections, connections
 from django.db.models import Count, Sum
 
@@ -123,4 +124,31 @@ def test_global_conservation_after_concurrent_load():
 
     concurrently([lambda i=i: load(i) for i in range(8)])
     assert TransferOperationModel.objects.count() == 80
+    assert_conservation()
+
+
+def test_concurrent_deposits_and_transfers_keep_the_balance_exact():
+    """Deposits and transfers touch the same account row through different
+    operations. Interleaving them must not lose or invent a peso."""
+    source, destination = funded_pair(20000)
+    start = DjangoAccountRepository().balance_of(UUID(source)).amount_minor
+
+    def make_deposit():
+        return APIClient().post(
+            f"/api/accounts/{source}/deposits/",
+            {"amount_minor": 1000, "currency": "COP"}, format="json",
+        ).status_code
+
+    def make_transfer(index):
+        return post(payload(source, destination, amount_minor=1000,
+                            idempotency_key=f"mixed-race-{index:04d}")).status_code
+
+    jobs = [make_deposit if i % 2 else (lambda i=i: make_transfer(i)) for i in range(20)]
+    statuses = concurrently(jobs)
+
+    deposits = sum(1 for i, code in enumerate(statuses) if i % 2 and code == 201)
+    transfers = sum(1 for i, code in enumerate(statuses) if i % 2 == 0 and code == 201)
+    assert deposits + transfers == 20, statuses
+    balance = DjangoAccountRepository().balance_of(UUID(source)).amount_minor
+    assert balance == start + deposits * 1000 - transfers * 1000
     assert_conservation()

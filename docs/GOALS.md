@@ -12,8 +12,8 @@ Para el detalle de un goal en curso, ver `PLAN.md` en la raíz (se reescribe por
 | 2 | Transferencias seguras | ✅ cerrado |
 | 3 | Gastos compartidos + contexto | ✅ cerrado |
 | 4 | Frontend MVP | ✅ cerrado |
-| 5 | Endurecimiento adversarial + auditoría | ⬜ |
-| 6 | README, decisiones y demo | ⬜ |
+| 5 | Endurecimiento adversarial + auditoría | ✅ cerrado |
+| 6 | README, decisiones y demo | ✅ cerrado |
 
 ---
 
@@ -279,31 +279,42 @@ entrevista son 60 minutos de pair programming sobre este código con un cambio n
 **Evidencia.** Lint y build limpios, 148 tests del backend intactos, las cinco pantallas navegadas
 en el navegador contra la API real, y conservación global en `0` después de todo.
 
-### GOAL 5 — Endurecimiento adversarial + auditoría ⬜
+### GOAL 5 — Endurecimiento adversarial + auditoría ✅
 
-Atacar el sistema a propósito: conservación, idempotencia, concurrencia, precisión, deadlocks,
-escrituras parciales, requests malformados. Test de regresión por cada hallazgo real. Después,
-auditoría de arquitectura: ORM filtrándose al dominio, controllers con lógica de negocio, facade
-convertido en god object, y **borrar** las abstracciones que no se ganan su complejidad.
+**La auditoría de arquitectura pasó las seis comprobaciones**, verificadas con grep, no de
+memoria: cero ORM en dominio o aplicación, cero imports de Django en el dominio, controladores sin
+reglas de negocio, `SELECT FOR UPDATE` solo en repositorios, `transaction.atomic` solo en
+servicios, y cero estado global mutable. El facade son 57 líneas de pura delegación y el archivo
+más grande del backend tiene 205 líneas, así que no hay god objects.
 
-Este goal produce la evidencia para la pregunta 02 del README.
+**Ataqué el sistema y encontré dos cosas.** Un gasto "compartido" de una sola persona se aceptaba
+—no es compartido y nadie debe nada— y ahora se rechaza. Y una ruta `/api/` no encontrada
+devolvía HTML en vez de JSON, inconsistente para una API.
+
+**Lo que resistió:** inyección SQL en título y handle (guardada como texto literal, ledger
+intacto), unicode y campos gigantes, UUIDs malformados, JSON roto, la cuenta de funding como
+parte de una transferencia o de un gasto, pagos en dirección inversa, y 20 depósitos y
+transferencias mezclados en paralelo sobre la misma cuenta con saldo final exacto al peso.
+
+**11 tests de regresión nuevos**, uno por cada comportamiento que probé a mano. Total: **159
+tests**, corridos 3 veces seguidas, y los de concurrencia 5 veces.
+
+**Un hallazgo del proceso:** uno de mis tests nuevos pasaba aislado y fallaba en compañía, 5 de 5
+veces. No era inestabilidad: los tests transaccionales vacían la cuenta de sistema, y el archivo
+de concurrencia ya tenía un fixture para restaurarla. Quedó en `docs/ai-log.md`.
 
 ---
 
-### GOAL 6 — README, decisiones y demo ⬜
+### GOAL 6 — README, decisiones y demo ✅
 
-README en primera persona respondiendo las 8 preguntas del reto, basado solo en lo que realmente
-se construyó. `docs/architecture-decisions.md` completo, con Singleton marcado explícitamente
-como *considerado y rechazado* a favor de inyección de dependencias. Y puntos de conversación
-para el video de 5 minutos — puntos, no un guion para leer, que el reto lo prohíbe.
+**`README.md`** en primera persona, respondiendo las ocho preguntas del reto con base en lo que
+realmente se construyó y midió. La pregunta 2 —cómo sé que no pierde un peso— está escrita como
+cinco formas concretas de perder plata, cada una con su protección y su evidencia ejecutada.
 
----
+**`docs/architecture-decisions.md`** con cada patrón: el problema real, dónde vive, qué cuesta y
+cuál era la alternativa más simple. Incluye **Singleton como considerado y rechazado**, con las
+tres razones y la condición bajo la cual lo reconsideraría.
 
-## Cómo trabajan los dos agentes
+**`docs/demo.md`** con los puntos para el video de 5 minutos, con tiempos por bloque. No es un
+guion: el reto prohíbe leer de uno.
 
-Definido en `AGENTS.md`. Resumen: Claude decide **qué** y **dónde**, y lo escribe en `PLAN.md`.
-Codex decide **cómo**, dentro de ese plan, y no rediseña. Claude revisa el `git diff`, corre los
-tests él mismo, y aprueba o pide cambios.
-
-La regla que salió de este proceso y que ya está en `docs/ai-log.md`: **ningún goal se cierra con
-evidencia producida por el mismo agente que escribió el código.**

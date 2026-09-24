@@ -70,8 +70,8 @@ class SharedExpense:
         accounts: Sequence[Account], strategy: SplitStrategy,
     ) -> 'SharedExpense':
         ids = [a.id for a in accounts]
-        if not ids or len(set(ids)) != len(ids) or payer not in ids or EXTERNAL_FUNDING_ID in ids:
-            raise InvalidSharedExpense('Distinct user participants including the payer are required.')
+        if len(ids) < 2 or len(set(ids)) != len(ids) or payer not in ids or EXTERNAL_FUNDING_ID in ids:
+            raise InvalidSharedExpense('A shared expense needs at least two distinct participants, including the payer.')
         if not isinstance(total, Money) or not len(ids) <= total.amount_minor <= 2**63 - 1:
             raise InvalidSharedExpense('Total must allow a positive share for every participant.')
         shares = strategy.split(total, ids)

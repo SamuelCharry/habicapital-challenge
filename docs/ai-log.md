@@ -87,6 +87,31 @@ mismo agente que escribió el código. Los tests los corro yo.
 
 ---
 
+## 2026-09-24 — Un test que pasaba solo y fallaba acompañado
+
+**Qué pasó.** En la fase de endurecimiento escribí un test de concurrencia que
+mezcla depósitos y transferencias sobre la misma cuenta. Corriéndolo aislado
+pasaba. Corriéndolo junto al archivo de concurrencia existente fallaba, con un
+error de llave foránea al insertar un asiento.
+
+La causa: los tests transaccionales vacían las tablas entre casos, y eso
+borraba la cuenta `EXTERNAL_FUNDING`, que se crea en una migración de datos.
+El archivo de concurrencia que ya existía tenía un fixture justo para
+restaurarla; mi archivo nuevo no. Moví el test a donde vive esa
+infraestructura en vez de duplicar el fixture.
+
+**Por qué lo dejo anotado.** Lo tentador era correrlo aislado, verlo verde y
+seguir. Fallaba 5 de 5 veces en compañía, siempre igual, así que no era
+inestabilidad: era estado compartido. La diferencia importa, porque "el test
+es flaky" es una excusa y "el test depende de datos que otro test borra" es un
+defecto con causa.
+
+**Lo que me llevo.** Un test que pasa solo y falla acompañado no está roto por
+azar: está diciendo algo sobre estado compartido que no modelé. Y correr la
+suite una sola vez no lo habría mostrado nunca.
+
+---
+
 ## 2026-09-24 — El agente se negó a implementar, y el error era mío de diseño
 
 **Qué pasó.** Escribí el plan de gastos compartidos con dos requisitos que
