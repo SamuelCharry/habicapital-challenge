@@ -62,6 +62,13 @@
      sitios, la de aviso en dos, y once moradas sin nombre. Con nombre se puede
      comprobar una decisión de contraste en un solo lugar. */
   --color-purple-hover: #6a00e6;
+  /* Degradado del hero, más claro a pedido: llega al lila de Habi (#b486e9).
+     Costo conocido: en la cola derecha el blanco baja a ~2,8:1, por debajo de
+     4,5:1 para texto pequeño. Se compensa con texto blanco puro y una sombra
+     suave; el saldo, al ser texto grande, queda cerca del mínimo de 3:1. */
+  --hero-from: #8e45f0;
+  --hero-mid: #a064ee;
+  --hero-to: #b486e9;
   --color-purple-mid: #6d00e0;
   --color-purple-line: #e4d2ff;
   --color-purple-line-soft: #eadbff;

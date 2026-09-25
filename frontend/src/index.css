@@ -847,13 +847,10 @@ select {
   margin: auto;
   padding: 30px 0 42px;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   border-top: 1px solid var(--color-neutral-200);
   font-size: 17px;
   color: var(--color-neutral-500);
-}
-.app-footer > span:first-child {
-  font-weight: 650;
 }
 .skip-link {
   position: fixed;
@@ -1355,12 +1352,14 @@ select {
 .hero {
   background-image: linear-gradient(
     118deg,
-    var(--color-purple-deep) 0%,
-    var(--color-purple-mid) 38%,
-    var(--color-purple) 72%,
-    var(--color-purple-bright) 100%
+    var(--hero-from) 0%,
+    var(--hero-mid) 50%,
+    var(--hero-to) 100%
   );
   color: var(--color-surface);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
   border-radius: var(--radius-lg);
   padding: var(--space-8) var(--space-8) var(--space-12);
   display: grid;
@@ -1601,4 +1600,26 @@ select {
 .button.light:hover,
 .button.secondary:hover {
   background: var(--color-purple-soft);
+}
+
+/* Estrellas del hero: detrás del contenido y sin capturar clics. */
+.hero-particles {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  pointer-events: none;
+}
+/* Sobre el lila claro, el texto secundario va en blanco puro y con una sombra
+   suave: es lo que sostiene la lectura en la cola clara del degradado. */
+.hero > div > p:not(.eyebrow),
+.hero-balance > span {
+  color: #ffffff;
+}
+.hero h1,
+.hero > div > p:not(.eyebrow),
+.hero-balance > span,
+.hero-balance .balance {
+  text-shadow: 0 1px 14px rgba(60, 10, 120, 0.4);
 }

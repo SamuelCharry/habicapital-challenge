@@ -72,7 +72,6 @@ export default function Transfer() {
       <div className="page-heading">
         <div>
           <h1>Transferir dinero</h1>
-          <p>Envía a otra persona y vincula el pago a lo que comparten.</p>
         </div>
       </div>
       {loading ? (

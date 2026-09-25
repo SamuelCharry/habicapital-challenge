@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { useActiveAccount } from '../session/ActiveAccount';
 import { useLoad } from './useLoad';
 import { Card } from '../components/Card';
+import { HeroParticles } from '../components/HeroParticles';
 import { Money } from '../components/Money';
 import { MovementList } from '../components/MovementList';
 import { EmptyState } from '../components/EmptyState';
@@ -28,6 +29,7 @@ export default function Dashboard() {
   return (
     <>
       <section className="hero">
+        <HeroParticles />
         <div>
           <h1>Hola, {active!.display_name.split(' ')[0]}.</h1>
           <p>Las cuentas claras. Los planes, compartidos.</p>

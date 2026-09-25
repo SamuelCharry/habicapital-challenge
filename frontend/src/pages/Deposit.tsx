@@ -49,7 +49,6 @@ export default function Deposit() {
       <div className="page-heading">
         <div>
           <h1>Recargar cuenta</h1>
-          <p>Agrega saldo para transferir y pagar lo que compartes.</p>
         </div>
       </div>
       {loading ? (

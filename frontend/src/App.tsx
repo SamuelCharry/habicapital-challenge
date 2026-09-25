@@ -91,8 +91,7 @@ function Shell({ onCreated }: { onCreated: (account: Account) => void }) {
         </Routes>
       </main>
       <footer className="app-footer">
-        <span>habi capital</span>
-        <span>El dinero cuenta historias.</span>
+        <span>Creado por Samuel Charry</span>
       </footer>
     </div>
   );
