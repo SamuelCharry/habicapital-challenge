@@ -95,6 +95,12 @@ select:disabled {
 .brand > span:last-child {
   font-weight: 400;
 }
+.brand-logo {
+  height: 52px;
+  width: auto;
+  display: block;
+  margin-right: 10px;
+}
 .brand-mark {
   width: 51px;
   height: 51px;
@@ -235,7 +241,7 @@ nav a.active {
   transition: background 0.15s;
 }
 .button:hover {
-  background: #512da3;
+  background: #6a00e6;
   text-decoration: none;
 }
 .button.light {
@@ -250,7 +256,7 @@ nav a.active {
 }
 .context-card {
   background: var(--color-purple-soft);
-  border-color: #e6def6;
+  border-color: #eadbff;
   position: relative;
 }
 .context-card h2 {
@@ -273,7 +279,7 @@ nav a.active {
   position: absolute;
   right: 39px;
   top: 27px;
-  color: #b79de6;
+  color: #c49bff;
   font-size: 69px;
 }
 .dashboard-grid {
@@ -348,7 +354,7 @@ nav a.active {
   align-items: center;
   gap: 11px;
   background: var(--color-purple-soft);
-  border: 1px solid #e0d3f6;
+  border: 1px solid #e4d2ff;
   color: var(--color-purple);
   padding: 6px 14px;
   border-radius: 11px;
@@ -399,7 +405,7 @@ nav a.active {
 }
 .expense-list a:hover {
   border-radius: 24px;
-  background: #fcfaff;
+  background: #fcf9ff;
   text-decoration: none;
 }
 .expense-icon {
@@ -560,8 +566,8 @@ select {
   cursor: pointer;
 }
 .participant-option:has(input:checked) {
-  background: #faf7ff;
-  border-color: #cbb6ed;
+  background: #faf5ff;
+  border-color: #d2b3ff;
 }
 .participant-option input {
   width: 27px;
@@ -748,7 +754,7 @@ select {
 .spinner {
   width: 27px;
   height: 27px;
-  border: 2px solid #d6c9ed;
+  border: 2px solid #dcc6ff;
   border-top-color: var(--color-purple);
   border-radius: 50%;
 }
@@ -979,7 +985,7 @@ select {
 }
 .simulation-notice {
   background: var(--color-purple-soft);
-  border: 1px solid #e6def6;
+  border: 1px solid #eadbff;
   border-radius: var(--radius-lg);
   padding: 30px;
 }
@@ -1017,14 +1023,6 @@ select {
   color: var(--color-neutral-500);
   font-size: 20px;
 }
-.app-dark .session-account span {
-  color: var(--dark-muted);
-}
-.app-dark .session-account .button {
-  background: transparent;
-  color: var(--dark-text);
-  border-color: var(--dark-line);
-}
 @media (max-width: 1050px) {
   .header-inner:has(.session-account) {
     flex-wrap: wrap;
@@ -1042,47 +1040,6 @@ select {
 
 /* --- La ruta al crédito ------------------------------------------------- */
 
-.app-dark {
-  background: radial-gradient(ellipse 70% 50% at 50% 30%, var(--dark-bg-glow) 0%, var(--dark-bg) 100%);
-  min-height: 100vh;
-  color: var(--dark-text);
-}
-.app-dark .app-header,
-.app-dark .app-footer {
-  background: transparent;
-  border-color: var(--dark-line);
-  color: var(--dark-muted);
-}
-.app-dark .brand {
-  color: var(--dark-text);
-}
-.app-dark .brand span {
-  color: var(--dark-text);
-}
-.app-dark .brand-mark {
-  background: var(--dark-purple);
-  color: var(--dark-bg);
-}
-.app-dark nav a {
-  color: var(--dark-muted);
-}
-.app-dark nav a.active {
-  background: rgba(164, 140, 240, 0.16);
-  color: var(--dark-text);
-}
-.app-dark .account-switcher span,
-.app-dark .account-switcher small {
-  color: var(--dark-muted);
-}
-.app-dark .account-switcher select {
-  background: transparent;
-  color: var(--dark-text);
-  border-color: var(--dark-line);
-}
-.app-dark .avatar {
-  background: rgba(164, 140, 240, 0.18);
-  color: var(--dark-purple);
-}
 
 .credit-page {
   max-width: 1720px;
@@ -1107,7 +1064,7 @@ select {
   min-width: 0;
 }
 .credit-page .eyebrow {
-  color: var(--dark-muted);
+  color: var(--credit-muted);
 }
 .credit-page h1 {
   margin: var(--space-8) 0 0;
@@ -1132,7 +1089,7 @@ select {
   gap: var(--space-1) var(--space-4);
   align-items: baseline;
   padding: var(--space-6) 0;
-  border-top: 1px solid var(--dark-line);
+  border-top: 1px solid var(--credit-line);
 }
 /* La procedencia ocupa la fila de abajo: en una columna estrecha, tres
    columnas dejarían el número sin aire. */
@@ -1141,7 +1098,7 @@ select {
 }
 .credit-rows dt {
   font-size: var(--text-base);
-  color: var(--dark-text);
+  color: var(--credit-text);
 }
 .credit-rows dd {
   margin: 0;
@@ -1153,31 +1110,36 @@ select {
 /* Turquesa solo cuando el valor cambió por mover el deslizador: distingue lo
    que tienes hoy de lo que tendrías en el escenario. */
 .credit-rows dd.moved {
-  color: var(--dark-teal);
+  color: var(--credit-teal);
 }
 .credit-rows span {
   font-size: var(--text-sm);
-  color: var(--dark-muted);
+  color: var(--credit-muted);
 }
 
+/* El mapa es una galaxia: fondo oscuro solo en el lienzo, la página sigue
+   blanca. */
 .credit-map {
   position: relative;
+  background: radial-gradient(ellipse 75% 60% at 50% 45%, #1b1535 0%, #0a0a14 70%);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
 }
 .credit-map canvas {
   width: 100%;
   /* Cuadrado-ish: la casa es casi cuadrada y un lienzo apaisado la dejaría
      pequeña en el centro con aire muerto a los lados. */
-  height: min(960px, 72vh);
+  height: min(640px, 58vh);
   display: block;
 }
 .credit-legend {
   position: absolute;
-  top: 0;
-  right: 0;
+  top: var(--space-6);
+  right: var(--space-6);
   display: flex;
   gap: var(--space-4);
   font-size: var(--text-sm);
-  color: var(--dark-muted);
+  color: #c9c7d8;
 }
 .credit-legend span {
   display: flex;
@@ -1196,7 +1158,7 @@ select {
 .credit-slider input {
   width: 100%;
   margin: 0;
-  accent-color: var(--dark-teal);
+  accent-color: var(--credit-teal);
   cursor: pointer;
 }
 .credit-slider div {
@@ -1204,7 +1166,7 @@ select {
   display: flex;
   justify-content: space-between;
   font-size: var(--text-sm);
-  color: var(--dark-muted);
+  color: var(--credit-muted);
 }
 
 .credit-steps {
@@ -1223,14 +1185,14 @@ select {
   gap: var(--space-4);
   align-items: baseline;
   padding: var(--space-6) 0;
-  border-top: 1px solid var(--dark-line);
+  border-top: 1px solid var(--credit-line);
   font-size: var(--text-lg);
 }
 .credit-steps li:last-child {
-  border-bottom: 1px solid var(--dark-line);
+  border-bottom: 1px solid var(--credit-line);
 }
 .credit-steps li span:first-child {
-  color: var(--dark-muted);
+  color: var(--credit-muted);
 }
 .credit-steps li span:last-child {
   font-weight: 600;
@@ -1239,7 +1201,7 @@ select {
 .credit-empty {
   margin-top: var(--space-12);
   padding-top: var(--space-8);
-  border-top: 1px solid var(--dark-line);
+  border-top: 1px solid var(--credit-line);
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -1247,7 +1209,7 @@ select {
 }
 .credit-empty > span {
   font-size: var(--text-lg);
-  color: var(--dark-muted);
+  color: var(--credit-muted);
 }
 .credit-empty p {
   margin: 0;
@@ -1256,10 +1218,10 @@ select {
 }
 .credit-empty .credit-empty-detail {
   font-weight: 400;
-  color: var(--dark-muted);
+  color: var(--credit-muted);
 }
 .credit-empty a {
-  color: var(--dark-teal);
+  color: var(--credit-teal);
   font-weight: 600;
 }
 
@@ -1267,7 +1229,7 @@ select {
   margin: var(--space-12) 0 0;
   font-size: var(--text-base);
   line-height: 1.5;
-  color: var(--dark-text);
+  color: var(--credit-text);
   text-wrap: pretty;
 }
 
@@ -1301,14 +1263,14 @@ select {
   }
   .credit-steps li span:last-child {
     grid-column: 2;
-    color: var(--dark-teal);
+    color: var(--credit-teal);
   }
 }
 
 /* --- Inicio: hero y franja de constancia -------------------------------- */
 
 .hero {
-  background-image: linear-gradient(118deg, #241052 0%, #3b1a86 40%, #653ac4 78%, #7a4fd4 100%);
+  background-image: linear-gradient(118deg, #6a00e6 0%, #7c01ff 38%, #9440ff 72%, #a45cff 100%);
   color: #ffffff;
   border-radius: var(--radius-lg);
   padding: var(--space-8) var(--space-8) var(--space-12);
@@ -1336,7 +1298,7 @@ select {
 }
 .hero-balance > span {
   font-size: var(--text-sm);
-  color: rgba(255, 255, 255, 0.82);
+  color: rgba(255, 255, 255, 0.92);
 }
 .hero-balance .balance {
   font-size: clamp(2.7rem, 6vw, 4.5rem);
@@ -1358,7 +1320,7 @@ select {
   padding: var(--space-8);
   box-shadow:
     0 2px 3px rgba(38, 34, 56, 0.05),
-    0 24px 60px rgba(59, 26, 134, 0.1);
+    0 24px 60px rgba(124, 1, 255, 0.1);
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.3fr);
   gap: var(--space-8);
@@ -1437,4 +1399,85 @@ select {
     padding-top: var(--space-4);
     border-top: 1px solid var(--color-neutral-200);
   }
+}
+
+/* Listas largas del inicio: la tarjeta mantiene su alto y el contenido se
+   desliza dentro, así muchos movimientos no empujan el resto de la página. */
+.scroll-area {
+  max-height: 620px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin-right: -18px;
+  padding-right: 18px;
+  scrollbar-width: thin;
+  scrollbar-color: #b4b5c3 transparent;
+}
+.scroll-area::-webkit-scrollbar {
+  width: 8px;
+}
+.scroll-area::-webkit-scrollbar-track {
+  background: #f1f2f6;
+  border-radius: var(--radius-full);
+}
+.scroll-area::-webkit-scrollbar-thumb {
+  background: #b4b5c3;
+  border-radius: var(--radius-full);
+}
+.scroll-area:focus-visible {
+  outline-offset: 4px;
+}
+
+/* --- Recargar ------------------------------------------------------------ */
+
+.hero-actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-top: var(--space-4);
+}
+.hero-balance .hero-actions .button {
+  margin-top: 0;
+}
+.button.ghost {
+  background: transparent;
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.6);
+}
+.button.ghost:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+.quick-amounts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-2);
+}
+.quick-amounts button {
+  font: inherit;
+  font-size: 20px;
+  font-weight: 600;
+  padding: 16px 12px;
+  border-radius: 17px;
+  border: 1px solid var(--color-neutral-200);
+  background: var(--color-surface);
+  color: var(--color-neutral-900);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.quick-amounts button:hover {
+  border-color: var(--color-purple);
+}
+.quick-amounts button.selected {
+  border-color: var(--color-purple);
+  background: var(--color-purple-soft);
+  color: var(--color-purple);
+}
+.quick-amounts .money {
+  font: inherit;
+}
+/* Sin esto, el hover genérico de .button pinta de morado los botones claros y
+   el texto morado desaparece sobre su propio fondo. */
+.button.light:hover,
+.button.secondary:hover {
+  background: var(--color-purple-soft);
 }

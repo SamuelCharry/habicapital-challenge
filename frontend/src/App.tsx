@@ -11,10 +11,12 @@ import SharedExpenseDetail from './pages/SharedExpenseDetail';
 import CreateSharedExpense from './pages/CreateSharedExpense';
 import CreateAccount from './pages/CreateAccount';
 import CreditPath from './pages/CreditPath';
+import Deposit from './pages/Deposit';
 import Login from './pages/Login';
 import { Button } from './components/Button';
 import { Spinner } from './components/Spinner';
 import { ErrorBanner } from './components/ErrorBanner';
+import habiLogo from './assets/habi-logo.png';
 
 function Shell({ onCreated }: { onCreated: (account: Account) => void }) {
   const { active, signOut } = useActiveAccount();
@@ -28,10 +30,8 @@ function Shell({ onCreated }: { onCreated: (account: Account) => void }) {
     return (
       <main id="main" className="auth-shell">
         <Link to="/entrar" className="brand">
-          <span className="brand-mark" aria-hidden="true">
-            h
-          </span>
-          habi<span>capital</span>
+          <img className="brand-logo" src={habiLogo} alt="habi" />
+          <span>capital</span>
         </Link>
         <Routes>
           <Route path="/entrar" element={<Login />} />
@@ -43,24 +43,19 @@ function Shell({ onCreated }: { onCreated: (account: Account) => void }) {
   }
   // La ruta al crédito es una habitación distinta: oscura y a sangre
   // completa. Las otras cinco pantallas no cambian.
-  const dark = !!active && location.pathname === '/ruta';
   return (
-    <div className={dark ? 'app app-dark' : 'app'}>
+    <div className="app">
       <a className="skip-link" href="#main">
         Ir al contenido
       </a>
       <header className="app-header">
         <div className="header-inner">
           <Link to="/" className="brand">
-            <span className="brand-mark" aria-hidden="true">
-              h
-            </span>
-            habi<span>capital</span>
+            <img className="brand-logo" src={habiLogo} alt="habi" />
+            <span>capital</span>
           </Link>
           <nav aria-label="Navegación principal">
-            <NavLink end to="/">
-              Inicio
-            </NavLink>
+            <NavLink to="/recargar">Recargar</NavLink>
             <NavLink to="/transfer">Transferir</NavLink>
             <NavLink to="/history">Historial</NavLink>
             <NavLink to="/ruta">Tu ruta</NavLink>
@@ -78,12 +73,13 @@ function Shell({ onCreated }: { onCreated: (account: Account) => void }) {
       </header>
       <main
         id="main"
-        className={dark ? 'shell shell-dark' : 'shell'}
+        className="shell"
         key={`${active?.id}:${location.pathname}:${location.search}`}
       >
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/cuentas/nueva" element={<CreateAccount onCreated={onCreated} />} />
+          <Route path="/recargar" element={<Deposit />} />
           <Route path="/transfer" element={<Transfer />} />
           <Route path="/history" element={<History />} />
           <Route path="/ruta" element={<CreditPath />} />

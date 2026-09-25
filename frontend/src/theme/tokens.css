@@ -1,6 +1,6 @@
 :root {
-  --color-purple: #653ac4;
-  --color-purple-soft: #f0eafb;
+  --color-purple: #7c01ff;
+  --color-purple-soft: #f4ebff;
   --color-teal: #087c70;
   --color-neutral-50: #f8f9fc;
   --color-neutral-200: #e4e5ed;
@@ -29,14 +29,12 @@
   --color-teal-soft: #e6f5ef;
 }
 
-/* Paleta de la pantalla oscura. Vive aparte a propósito: es un momento
-   distinto del producto, no un modo oscuro global. */
+/* Paleta de la ruta al crédito. Antes era una pantalla oscura aparte; ahora
+   vive sobre blanco como el resto del producto. */
 :root {
-  --dark-bg: #0a0a14;
-  --dark-bg-glow: #12101f;
-  --dark-text: #f2f0f8;
-  --dark-muted: #8b8a9e;
-  --dark-line: rgba(242, 240, 248, 0.08);
-  --dark-purple: #a48cf0;
-  --dark-teal: #5eead4;
+  --credit-text: #262238;
+  --credit-muted: #666779;
+  --credit-line: rgba(38, 34, 56, 0.1);
+  --credit-purple: #7c01ff;
+  --credit-teal: #087c70;
 }

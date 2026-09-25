@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef } from 'react';
 import type { CreditPath } from '../api/types';
 import { BRAND_CORAL, BRAND_PURPLE, houseSilhouette, isDotParticle } from './creditMapShape';
 
-const NOT_QUALIFYING = [123, 82, 224];
-const QUALIFYING = [20, 184, 166];
+const NOT_QUALIFYING = [168, 85, 255];
+const QUALIFYING = [45, 245, 190];
 
 // El umbral que el producto considera "califica". El degradado se centra aquí,
 // no en 0.5: si se centrara en 0.5 casi toda la nube saldría turquesa, porque
@@ -22,18 +22,13 @@ const T = {
   houseFormed: 1.7,
   houseHolds: 2.1,
   dataFormed: 3.3,
-  // Segundo momento de difusión: las partículas más cercanas a la ruta se
-  // desprenden de la nube y se alinean sobre ella.
-  roadStarts: 3.4,
-  roadFormed: 4.4,
   pointAppears: 3.9,
   pathDraws: 3.5,
   pathDrawn: 4.4,
 };
 
-/** Cuántas partículas forman el corredor. Con menos no se lee como camino;
- *  con muchas más, la nube se vacía y deja de haber mapa. */
-const ROAD_PARTICLES = 520;
+/** Cada cuántos pasos de la ruta hay una estrella de la constelación. */
+const STAR_EVERY = 6;
 
 type Particle = {
   noiseX: number;
@@ -50,17 +45,12 @@ type Particle = {
   logoColor: string;
   dataColor: string;
   dataAlpha: number;
-  /** Posición sobre la ruta, si esta partícula forma parte del corredor. */
-  roadX: number | null;
-  roadY: number | null;
-  /** Color según la probabilidad de calificar en ese punto del camino. */
-  roadColor: string;
 };
 
 /** Mezcla los dos acentos alrededor del umbral, sin frontera dura: la frontera
  *  real no es nítida y dibujarla sería mentir. */
 function colourFor(probability: number): string {
-  const t = Math.min(1, Math.max(0, ((probability - QUALIFIES_AT) / 0.3) * 0.5 + 0.5));
+  const t = Math.min(1, Math.max(0, ((probability - QUALIFIES_AT) / 0.1) * 0.5 + 0.5));
   const channels = NOT_QUALIFYING.map((value, index) => Math.round(value + (QUALIFYING[index] - value) * t));
   return `rgb(${channels.join(',')})`;
 }
@@ -76,62 +66,6 @@ const isLogoDot = (p: { logoColor: string }) => p.logoColor === BRAND_CORAL;
 const clamp01 = (t: number) => Math.min(1, Math.max(0, t));
 const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 const between = (value: number, from: number, to: number) => clamp01((value - from) / (to - from));
-
-/** Elige las partículas que formarán el corredor y les da su sitio sobre la
- *  ruta.
- *
- *  Se toman las más cercanas al camino, no unas cualesquiera: así el corredor
- *  está hecho de los perfiles reales por los que tu ruta pasa, y la frase
- *  "el camino pasa por gente que existe" sigue siendo cierta al pie de la
- *  letra. Después se reparten a lo largo del recorrido, con un desvío
- *  perpendicular pequeño que le da grosor y textura.
- */
-function assignRoad(particles: Particle[], trajectory: CreditPath['trajectory'], random: () => number) {
-  if (trajectory.length < 2) return;
-  const route = trajectory.map(w => [w.capacity, w.stability] as const);
-
-  const distanceToRoute = (x: number, y: number) => {
-    let best = Infinity;
-    for (let i = 0; i < route.length - 1; i++) {
-      const [ax, ay] = route[i];
-      const [bx, by] = route[i + 1];
-      const dx = bx - ax;
-      const dy = by - ay;
-      const lengthSquared = dx * dx + dy * dy || 1;
-      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / lengthSquared));
-      best = Math.min(best, Math.hypot(x - (ax + dx * t), y - (ay + dy * t)));
-    }
-    return best;
-  };
-
-  const chosen = particles
-    .map((particle, index) => ({ index, distance: distanceToRoute(particle.dataX, particle.dataY) }))
-    .sort((a, b) => a.distance - b.distance)
-    .slice(0, Math.min(ROAD_PARTICLES, particles.length));
-
-  chosen.forEach(({ index }, rank) => {
-    const along = (rank / Math.max(1, chosen.length - 1)) * (route.length - 1);
-    const segment = Math.min(route.length - 2, Math.floor(along));
-    const t = along - segment;
-    const [ax, ay] = route[segment];
-    const [bx, by] = route[segment + 1];
-    const dx = bx - ax;
-    const dy = by - ay;
-    const length = Math.hypot(dx, dy) || 1;
-    // Desvío perpendicular: sin él, el corredor sería una línea de un píxel.
-    const offset = (random() - 0.5) * 0.09;
-    const particle = particles[index];
-    particle.roadX = ax + dx * t - (dy / length) * offset;
-    particle.roadY = ay + dy * t + (dx / length) * offset;
-
-    // El corredor se tiñe con la probabilidad real de cada punto del camino,
-    // así que arranca morado —donde aún no calificas— y termina turquesa.
-    // El cruce del umbral se ve, en vez de haber que explicarlo.
-    const probability =
-      trajectory[segment].qualify_probability * (1 - t) + trajectory[segment + 1].qualify_probability * t;
-    particle.roadColor = colourFor(probability);
-  });
-}
 
 export function CreditMap({ path, position }: { path: CreditPath; position: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -201,17 +135,13 @@ export function CreditMap({ path, position }: { path: CreditPath; position: numb
         phase: random() * Math.PI * 2,
         // Los generados van más tenues y más pequeños: el mapa distingue lo
         // observado de lo inferido en vez de mezclarlos sin decirlo.
-        size: generated ? 1.2 : 1.8,
+        size: generated ? 1.7 : 2.4,
         logoColor: isDotParticle(index, points.length) ? BRAND_CORAL : BRAND_PURPLE,
         dataColor: colourFor(probability),
-        dataAlpha: generated ? 0.16 : 0.8,
-        roadX: null,
-        roadY: null,
-        roadColor: '',
+        dataAlpha: generated ? 0.55 : 1,
       };
     });
 
-    assignRoad(particlesRef.current, path.trajectory, scatter(53));
     startedAt.current = performance.now();
   }, [path]);
 
@@ -262,9 +192,8 @@ export function CreditMap({ path, position }: { path: CreditPath; position: numb
       // La disolución abulta hacia afuera a mitad de camino: sin eso el paso de
       // la casa a los datos parece una diapositiva, no partículas sueltas.
       const bulge = Math.sin(dissolving * Math.PI);
-      // El corredor: segundo momento de ruido que se vuelve estructura.
-      const paving = easeOut(between(elapsed, T.roadStarts, T.roadFormed));
 
+      // Sobre el fondo oscuro las partículas suman luz, como una galaxia.
       context.globalCompositeOperation = 'lighter';
       const breathe = (Math.PI * 2) / 8;
       for (const particle of particlesRef.current) {
@@ -277,12 +206,6 @@ export function CreditMap({ path, position }: { path: CreditPath; position: numb
         let x = fromX + (dataX - fromX) * settled;
         let y = fromY + (dataY - fromY) * settled;
 
-        const onRoad = particle.roadX !== null && paving > 0;
-        if (onRoad) {
-          const [roadX, roadY] = toData(particle.roadX!, particle.roadY!);
-          x += (roadX - x) * paving;
-          y += (roadY - y) * paving;
-        }
         x += particle.swirl * bulge * houseScale;
         y += Math.sin(particle.phase) * bulge * houseScale * 0.3;
 
@@ -290,20 +213,18 @@ export function CreditMap({ path, position }: { path: CreditPath; position: numb
         const logoAlpha = isLogoDot(particle) ? 1 : 0.85;
         const base =
           (0.25 + 0.75 * forming) * (particle.dataAlpha + (logoAlpha - particle.dataAlpha) * (1 - settled));
-        // Las del corredor se encienden a medida que se colocan: es lo que lo
-        // hace legible como camino y no como una franja algo más densa.
-        const alpha = onRoad ? base + (1 - base) * paving : base;
+        // Una vez asentadas, las estrellas titilan un poco.
+        const twinkle = 1 - settled * 0.15 * (0.5 + 0.5 * Math.sin(seconds * 1.7 + particle.phase * 5));
+        const alpha = base * twinkle;
 
         context.globalAlpha = Math.min(1, alpha);
         context.fillStyle =
           forming < 0.12
             ? '#8b8a9e'
-            : onRoad && paving > 0.5
-              ? particle.roadColor
-              : settled > 0.55
-                ? particle.dataColor
-                : particle.logoColor;
-        const size = particle.size + (1 - settled) * 0.6 + (onRoad ? paving * 0.5 : 0);
+            : settled > 0.55
+              ? particle.dataColor
+              : particle.logoColor;
+        const size = particle.size + (1 - settled) * 0.6;
         context.fillRect(x + drift, y + drift * 0.6, size, size);
       }
       context.globalCompositeOperation = 'source-over';
@@ -316,33 +237,37 @@ export function CreditMap({ path, position }: { path: CreditPath; position: numb
       const screen = path.trajectory.map(waypoint => toData(waypoint.capacity, waypoint.stability));
 
       if (drawn > 0) {
-        const upTo = Math.max(2, Math.floor(eased * (screen.length - 1)) + 1);
+        // La ruta como constelación: estrellas en los hitos del camino, unidas
+        // por trazos rectos que se van dibujando de una a la siguiente.
+        const stars = screen.filter((_, index) => index % STAR_EVERY === 0 || index === screen.length - 1);
+        const reach = eased * (stars.length - 1);
         context.save();
         context.lineCap = 'round';
-        context.lineJoin = 'round';
-        // Con el corredor de partículas dibujado, la línea pasa a ser un
-        // hilo que lo guía, no el protagonista: si se deja gruesa, tapa las
-        // partículas que acaban de colocarse.
-        context.shadowColor = 'rgba(255,255,255,.6)';
-        context.shadowBlur = 10;
-        context.strokeStyle = `rgba(255,255,255,${0.85 - paving * 0.45})`;
-        context.lineWidth = 2.5 - paving;
+        context.strokeStyle = 'rgba(255,255,255,.75)';
+        context.lineWidth = 2;
         context.beginPath();
-        screen.slice(0, upTo).forEach(([x, y], index) => {
-          if (index) context.lineTo(x, y);
-          else context.moveTo(x, y);
-        });
-        context.stroke();
-        context.restore();
-
-        // Hitos cada seis pasos: dan sensación de recorrido por etapas en vez
-        // de una línea continua sin referencias.
-        context.fillStyle = 'rgba(242,240,248,.55)';
-        for (let index = 6; index < upTo; index += 6) {
-          context.beginPath();
-          context.arc(screen[index][0], screen[index][1], 2, 0, Math.PI * 2);
-          context.fill();
+        context.moveTo(stars[0][0], stars[0][1]);
+        for (let index = 1; index < stars.length; index++) {
+          const t = Math.min(1, reach - (index - 1));
+          if (t <= 0) break;
+          const [ax, ay] = stars[index - 1];
+          const [bx, by] = stars[index];
+          context.lineTo(ax + (bx - ax) * t, ay + (by - ay) * t);
         }
+        context.stroke();
+
+        context.shadowColor = 'rgba(255,255,255,.9)';
+        context.shadowBlur = 18;
+        context.fillStyle = '#ffffff';
+        stars.forEach(([x, y], index) => {
+          const lit = clamp01((reach - index) * 3 + 1);
+          if (lit <= 0) return;
+          context.globalAlpha = lit * (0.8 + 0.2 * Math.sin(seconds * 2 + index));
+          context.beginPath();
+          context.arc(x, y, index === stars.length - 1 ? 5.5 : 4, 0, Math.PI * 2);
+          context.fill();
+        });
+        context.restore();
       }
 
       const appeared = between(elapsed, T.pointAppears, T.pointAppears + 0.6);
@@ -353,25 +278,25 @@ export function CreditMap({ path, position }: { path: CreditPath; position: numb
 
       if (index > 0) {
         const [originPointX, originPointY] = screen[0];
-        context.strokeStyle = 'rgba(242,240,248,.45)';
+        context.strokeStyle = 'rgba(255,255,255,.5)';
         context.lineWidth = 1;
         context.beginPath();
-        context.arc(originPointX, originPointY, 3.5, 0, Math.PI * 2);
+        context.arc(originPointX, originPointY, 6, 0, Math.PI * 2);
         context.stroke();
       }
 
-      const radius = 24 * appeared;
+      const radius = 36 * appeared;
       const halo = context.createRadialGradient(x, y, 0, x, y, radius);
-      halo.addColorStop(0, `rgba(255,255,255,${0.55 * appeared})`);
+      halo.addColorStop(0, `rgba(255,255,255,${0.45 * appeared})`);
       halo.addColorStop(1, 'rgba(255,255,255,0)');
       context.fillStyle = halo;
       context.beginPath();
       context.arc(x, y, radius, 0, Math.PI * 2);
       context.fill();
       context.globalAlpha = appeared;
-      context.fillStyle = '#fff';
+      context.fillStyle = '#ffffff';
       context.beginPath();
-      context.arc(x, y, 4, 0, Math.PI * 2);
+      context.arc(x, y, 7.5, 0, Math.PI * 2);
       context.fill();
       context.globalAlpha = 1;
     };

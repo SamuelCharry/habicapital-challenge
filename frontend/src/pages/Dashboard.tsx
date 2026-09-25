@@ -35,9 +35,14 @@ export default function Dashboard() {
         <div className="hero-balance">
           <span>Saldo disponible · @{active!.handle}</span>
           {data && <Money className="balance" amount={data.balance.balance_minor} />}
-          <Link className="button light" to="/transfer">
-            Transferir dinero
-          </Link>
+          <div className="hero-actions">
+            <Link className="button ghost" to="/recargar">
+              Recargar
+            </Link>
+            <Link className="button light" to="/transfer">
+              Transferir dinero
+            </Link>
+          </div>
         </div>
       </section>
       {loading ? (
@@ -48,29 +53,15 @@ export default function Dashboard() {
         data && (
           <>
             <SavingsStreak summary={data.summary} />
-            <div className="overview-grid single">
-              <Card className="context-card">
-                <span className="context-symbol" aria-hidden="true">
-                  ◈
-                </span>
-                <h2>
-                  Cada pago tiene
-                  <br />
-                  una historia.
-                </h2>
-                <p>Reúne un gasto, reparte las cuentas y descubre quién ya puso su parte.</p>
-                <Link className="text-link" to="/expenses/new">
-                  Crear un gasto compartido <span aria-hidden="true">→</span>
-                </Link>
-              </Card>
-            </div>
             <div className="dashboard-grid">
               <Card>
                 <div className="section-heading">
                   <h2>Actividad reciente</h2>
                   <Link to="/history">Ver todo →</Link>
                 </div>
-                <MovementList movements={data.history.slice(0, 5)} />
+                <div className="scroll-area" tabIndex={0} role="region" aria-label="Actividad reciente">
+                  <MovementList movements={data.history} />
+                </div>
               </Card>
               <Card>
                 <div className="section-heading">
@@ -85,31 +76,33 @@ export default function Dashboard() {
                     <Link to="/expenses/new">Crear un gasto →</Link>
                   </EmptyState>
                 ) : (
-                  <ul className="expense-list">
-                    {data.expenses.map(expense => (
-                      <li key={expense.id}>
-                        <Link to={`/expenses/${expense.id}`}>
-                          <div className="section-heading">
-                            <span className="expense-icon" aria-hidden="true">
-                              ◈
-                            </span>
-                            <span className={`badge ${expense.settled ? 'settled' : ''}`}>
-                              {expense.settled ? 'Saldado' : 'Por completar'}
-                            </span>
-                          </div>
-                          <h3>{expense.title}</h3>
-                          <p>
-                            {people(expense.participants.length)} · Total{' '}
-                            <Money amount={expense.total_minor} />
-                          </p>
-                          <div className="expense-bottom">
-                            <span>Pendiente del grupo</span>
-                            <Money amount={expense.outstanding_total_minor} />
-                          </div>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="scroll-area" tabIndex={0} role="region" aria-label="Gastos compartidos">
+                    <ul className="expense-list">
+                      {data.expenses.map(expense => (
+                        <li key={expense.id}>
+                          <Link to={`/expenses/${expense.id}`}>
+                            <div className="section-heading">
+                              <span className="expense-icon" aria-hidden="true">
+                                ◈
+                              </span>
+                              <span className={`badge ${expense.settled ? 'settled' : ''}`}>
+                                {expense.settled ? 'Saldado' : 'Por completar'}
+                              </span>
+                            </div>
+                            <h3>{expense.title}</h3>
+                            <p>
+                              {people(expense.participants.length)} · Total{' '}
+                              <Money amount={expense.total_minor} />
+                            </p>
+                            <div className="expense-bottom">
+                              <span>Pendiente del grupo</span>
+                              <Money amount={expense.outstanding_total_minor} />
+                            </div>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
               </Card>
             </div>

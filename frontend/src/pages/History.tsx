@@ -15,7 +15,6 @@ export default function History() {
       <div className="page-heading">
         <div>
           <h1>Tu historial</h1>
-          <p>Todo lo que entra, lo que sale y la historia que lo acompaña.</p>
         </div>
       </div>
       <Card>
