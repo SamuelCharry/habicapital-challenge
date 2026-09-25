@@ -1,4 +1,12 @@
-import type { ReactNode } from 'react';
-export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <section className={`card ${className}`}>{children}</section>;
+import type { HTMLAttributes, ReactNode } from 'react';
+export function Card({
+  children,
+  className = '',
+  ...props
+}: { children: ReactNode; className?: string } & HTMLAttributes<HTMLElement>) {
+  return (
+    <section className={`card ${className}`} {...props}>
+      {children}
+    </section>
+  );
 }

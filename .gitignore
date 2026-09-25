@@ -3,6 +3,9 @@
 .env.local
 *.env
 !.env.example
+.agents/*
+.github/*
+!.github/workflows/*
 
 # Python
 __pycache__/

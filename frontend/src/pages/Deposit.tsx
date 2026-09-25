@@ -8,6 +8,7 @@ import { Money } from '../components/Money';
 import { Button } from '../components/Button';
 import { AmountField, pesosToMinor } from '../components/Field';
 import { ErrorBanner } from '../components/ErrorBanner';
+import { SuccessCard } from '../components/SuccessCard';
 import { Spinner } from '../components/Spinner';
 
 /** Montos de un toque: cubren las recargas habituales sin tener que teclear. */
@@ -56,11 +57,7 @@ export default function Deposit() {
       ) : error ? (
         <ErrorBanner message={error} retry={retry} />
       ) : done ? (
-        <Card className="success-card">
-          <span className="success-mark" aria-hidden="true">
-            ✓
-          </span>
-          <h2>Recarga confirmada</h2>
+        <SuccessCard title="Recarga confirmada">
           <p>
             Agregaste <Money amount={done.amount} />. Tu saldo ahora es <Money amount={done.balance} />.
           </p>
@@ -78,7 +75,7 @@ export default function Deposit() {
               Hacer otra recarga
             </Button>
           </div>
-        </Card>
+        </SuccessCard>
       ) : (
         data && (
           <div className="form-grid">
@@ -118,10 +115,10 @@ export default function Deposit() {
             </Card>
             <aside className="stack">
               <Card>
-                <p className="eyebrow">SALDO ACTUAL</p>
-                <h2>
+                <h2 className="eyebrow">Saldo actual</h2>
+                <p className="aside-figure">
                   <Money amount={data.balance_minor} />
-                </h2>
+                </p>
                 {minor && (
                   <p className="muted">
                     Después de recargar: <Money amount={data.balance_minor + minor} />

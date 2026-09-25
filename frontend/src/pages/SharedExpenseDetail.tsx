@@ -30,7 +30,7 @@ export default function SharedExpenseDetail() {
   return (
     <>
       <Link className="back-link" to="/">
-        ← Volver al inicio
+        <span aria-hidden="true">←</span> Volver al inicio
       </Link>
       <div className="page-heading">
         <div>
@@ -40,7 +40,7 @@ export default function SharedExpenseDetail() {
           </p>
         </div>
         <span className={`badge ${expense.settled ? 'settled' : ''}`}>
-          {expense.settled ? '✓ Gasto saldado' : 'Por completar'}
+          {expense.settled ? 'Gasto saldado' : 'Por completar'}
         </span>
       </div>
       <div className="overview-grid">
@@ -59,7 +59,7 @@ export default function SharedExpenseDetail() {
           </p>
           {me && me.account_id !== expense.payer && !me.settled && (
             <Link className="button" to={`/transfer?expense=${expense.id}`}>
-              Pagar mi parte ↗
+              Pagar mi parte <span aria-hidden="true">↗</span>
             </Link>
           )}
         </Card>
@@ -127,7 +127,7 @@ export default function SharedExpenseDetail() {
             <h2>Pagos de este gasto</h2>
             <p>Recibidos por {payer?.display_name}</p>
           </div>
-          <span className="context-chip">◈ {expense.title}</span>
+          <span className="context-chip"><span aria-hidden="true">◈</span> {expense.title}</span>
         </div>
         {movements.length ? (
           <MovementList movements={movements} />

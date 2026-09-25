@@ -10,6 +10,7 @@ import { Button } from '../components/Button';
 import { Field, AmountField, pesosToMinor } from '../components/Field';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorBanner } from '../components/ErrorBanner';
+import { SuccessCard } from '../components/SuccessCard';
 import { Spinner } from '../components/Spinner';
 
 export default function Transfer() {
@@ -81,17 +82,13 @@ export default function Transfer() {
       ) : (
         data &&
         (result ? (
-          <Card className="success-card">
-            <span className="success-mark" aria-hidden="true">
-              ✓
-            </span>
-            <h2>Transferencia confirmada</h2>
+          <SuccessCard title="Transferencia confirmada">
             <p>
               Tu pago de <Money amount={minor!} /> fue recibido.
             </p>
             {result.shared_expense_id && (
               <Link className="context-chip" to={`/expenses/${result.shared_expense_id}`}>
-                ◈ {expense?.title} →
+                <span aria-hidden="true">◈</span> {expense?.title} <span aria-hidden="true">→</span>
               </Link>
             )}
             <div className="actions">
@@ -102,7 +99,7 @@ export default function Transfer() {
                 Volver al inicio
               </Link>
             </div>
-          </Card>
+          </SuccessCard>
         ) : data.accounts.filter(a => a.id !== id).length === 0 ? (
           <Card>
             <EmptyState title="Hace falta alguien al otro lado">
@@ -209,7 +206,7 @@ export default function Transfer() {
                 {expense ? (
                   <>
                     <Link className="context-chip" to={`/expenses/${expense.id}`}>
-                      ◈ {expense.title}
+                      <span aria-hidden="true">◈</span> {expense.title}
                     </Link>
                     <p>Este pago quedará en el historial del gasto y reducirá tu parte pendiente.</p>
                     <div className="summary-line">

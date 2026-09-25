@@ -70,6 +70,14 @@ export default function CreditPath() {
     ? Math.round((position / 100) * (data.trajectory.length - 1))
     : 0;
 
+  // El deslizador vale 0–100, pero ese número no existe en el producto. Quien
+  // usa lector de pantalla necesita oír el escenario, no el porcentaje.
+  const scenario = data ? rows(data, waypointIndex) : [];
+  const valueText =
+    position === 0
+      ? 'Hoy'
+      : `${scenario[0]?.value} de ahorro mensual, ${scenario[1]?.value} meses de constancia`;
+
   return (
     <div className="credit-page">
       {/* Las cifras van al lado del diagrama, no debajo: al mover el
@@ -80,8 +88,8 @@ export default function CreditPath() {
           <h1>{loading || !data ? 'Calculando tu posición…' : data.headline}</h1>
 
           {data && (
-            <dl className="credit-rows">
-              {rows(data, waypointIndex).map(row => (
+            <dl className="credit-rows" aria-live="polite">
+              {scenario.map(row => (
                 <div key={row.label}>
                   <dt>{row.label}</dt>
                   <dd className={row.moved ? 'moved' : undefined}>{row.value}</dd>
@@ -106,6 +114,7 @@ export default function CreditPath() {
                   value={position}
                   onChange={event => setPosition(Number(event.target.value))}
                   aria-label="Recorre la ruta desde hoy hasta el escenario en que calificas"
+                  aria-valuetext={valueText}
                 />
                 <div>
                   <span>Hoy</span>
@@ -121,7 +130,7 @@ export default function CreditPath() {
         <>
           {data.has_enough_evidence ? (
             <section className="credit-steps">
-              <p className="eyebrow">TU RUTA</p>
+              <h2 className="eyebrow">Tu ruta</h2>
               <ol>
                 {data.steps.map(step => (
                   <li key={step.order}>
@@ -140,7 +149,7 @@ export default function CreditPath() {
                 Llevas {data.profile.months_consistent}
                 {data.profile.months_consistent === 1 ? ' mes' : ' meses'}.
               </p>
-              <Link to="/">Volver al inicio →</Link>
+              <Link to="/">Volver al inicio <span aria-hidden="true">→</span></Link>
             </section>
           )}
 

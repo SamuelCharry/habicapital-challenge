@@ -20,7 +20,7 @@ export default function History() {
       <Card>
         <div className="section-heading">
           <h2>Movimientos de @{active!.handle}</h2>
-          <span className="context-chip">◈ Con gasto asociado</span>
+          <span className="context-chip"><span aria-hidden="true">◈</span> Con gasto asociado</span>
         </div>
         {loading ? (
           <Spinner />

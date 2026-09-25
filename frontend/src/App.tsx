@@ -71,12 +71,14 @@ function Shell({ onCreated }: { onCreated: (account: Account) => void }) {
           </div>
         </div>
       </header>
-      <main
-        id="main"
-        className="shell"
-        key={`${active?.id}:${location.pathname}:${location.search}`}
-      >
-        <Routes>
+      <main id="main" className="shell">
+        {/* La llave estaba en <main>, así que cada navegación destruía y volvía
+            a crear el contenedor compartido y con él la posición de scroll y el
+            foco. Rutas distintas ya montan componentes distintos por sí solas;
+            lo único que necesita reinicio explícito es cambiar de cuenta (las
+            pantallas guardan formularios por cuenta) y cambiar los parámetros
+            de la URL, que algunas pantallas leen solo al montar. */}
+        <Routes key={`${active.id}:${location.search}`}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/cuentas/nueva" element={<CreateAccount onCreated={onCreated} />} />
           <Route path="/recargar" element={<Deposit />} />

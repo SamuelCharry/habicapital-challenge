@@ -43,7 +43,7 @@ export default function CreateAccount({ onCreated }: { onCreated: (account: Acco
 
   return (
     <>
-      {!active && <Link to="/entrar">← Volver a entrar</Link>}
+      {!active && <Link to="/entrar"><span aria-hidden="true">←</span> Volver a entrar</Link>}
       <div className="page-heading">
         <div>
           <h1>{active ? 'Crear una cuenta' : 'Todo empieza con una cuenta'}</h1>

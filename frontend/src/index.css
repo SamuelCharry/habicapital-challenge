@@ -25,6 +25,21 @@ a {
 }
 a:hover {
   text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+::selection {
+  background: var(--color-purple);
+  color: var(--color-surface);
+}
+.hero ::selection,
+.balance-card ::selection {
+  background: var(--color-surface);
+  color: var(--color-purple);
+}
+input,
+textarea {
+  caret-color: var(--color-purple);
 }
 button,
 a,
@@ -33,8 +48,15 @@ select {
   -webkit-tap-highlight-color: transparent;
 }
 :focus-visible {
-  outline: 5px solid var(--color-purple);
-  outline-offset: 6px;
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+/* Las superficies moradas heredan un anillo blanco: sobre el morado de marca
+   el anillo oscuro se queda en 2,42:1 y el morado sobre sí mismo en 1:1. */
+.hero,
+.balance-card,
+.credit-map {
+  --focus-ring: var(--color-surface);
 }
 h1,
 h2,
@@ -105,7 +127,7 @@ select:disabled {
   width: 51px;
   height: 51px;
   background: var(--color-purple);
-  color: white;
+  color: var(--color-surface);
   border-radius: 17px;
   display: grid;
   place-items: center;
@@ -198,16 +220,16 @@ nav a.active {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  color: white;
+  color: var(--color-surface);
   background: var(--color-purple);
   border: 0;
   padding: 45px 51px;
 }
 .balance-card > p {
-  opacity: 0.85;
+  color: var(--color-on-purple-soft);
 }
 .balance-card > span:not(.balance) {
-  opacity: 0.75;
+  color: var(--color-on-purple-soft);
   font-size: 20px;
 }
 .money {
@@ -235,28 +257,28 @@ nav a.active {
   padding: 18px 30px;
   min-height: 69px;
   background: var(--color-purple);
-  color: white;
+  color: var(--color-surface);
   font-weight: 600;
   font-size: 20px;
   transition: background 0.15s;
 }
 .button:hover {
-  background: #6a00e6;
+  background: var(--color-purple-hover);
   text-decoration: none;
 }
 .button.light {
-  background: white;
+  background: var(--color-surface);
   color: var(--color-purple);
   margin-top: 42px;
 }
 .button.secondary {
-  background: white;
+  background: var(--color-surface);
   color: var(--color-purple);
-  border-color: var(--color-neutral-200);
+  border-color: var(--color-border-control);
 }
 .context-card {
   background: var(--color-purple-soft);
-  border-color: #eadbff;
+  border-color: var(--color-purple-line-soft);
   position: relative;
 }
 .context-card h2 {
@@ -265,7 +287,7 @@ nav a.active {
   letter-spacing: -0.045em;
 }
 .context-card p:not(.eyebrow) {
-  color: #686078;
+  color: var(--color-text-subtle);
   max-width: 540px;
   margin-top: 18px;
 }
@@ -279,7 +301,7 @@ nav a.active {
   position: absolute;
   right: 39px;
   top: 27px;
-  color: #c49bff;
+  color: var(--color-purple-accent);
   font-size: 69px;
 }
 .dashboard-grid {
@@ -298,6 +320,20 @@ nav a.active {
 .section-heading > a {
   font-size: 18px;
   font-weight: 600;
+  /* Eran ~27px de alto. El relleno negativo mantiene la alineación óptica con
+     el encabezado mientras el objetivo llega a 44px. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 12px;
+  margin-right: -12px;
+  border-radius: 12px;
+}
+.section-heading > a:hover {
+  background: var(--color-purple-soft);
+  text-decoration: none;
 }
 .section-heading p {
   color: var(--color-neutral-500);
@@ -315,7 +351,7 @@ nav a.active {
   align-items: start;
   column-gap: 18px;
   padding: 30px 0;
-  border-bottom: 1px solid #eeedf3;
+  border-bottom: 1px solid var(--color-divider);
 }
 .movement:last-child {
   border-bottom: 0;
@@ -327,8 +363,8 @@ nav a.active {
   display: grid;
   place-items: center;
   border-radius: 18px;
-  background: #f2f0f6;
-  color: #686078;
+  background: var(--color-icon-surface);
+  color: var(--color-text-subtle);
   font-size: 32px;
 }
 .movement-icon.incoming {
@@ -354,7 +390,7 @@ nav a.active {
   align-items: center;
   gap: 11px;
   background: var(--color-purple-soft);
-  border: 1px solid #e4d2ff;
+  border: 1px solid var(--color-purple-line);
   color: var(--color-purple);
   padding: 6px 14px;
   border-radius: 11px;
@@ -405,7 +441,7 @@ nav a.active {
 }
 .expense-list a:hover {
   border-radius: 24px;
-  background: #fcf9ff;
+  background: var(--color-purple-wash-warm);
   text-decoration: none;
 }
 .expense-icon {
@@ -427,7 +463,7 @@ nav a.active {
   gap: 12px;
   margin-top: 27px;
   padding-top: 21px;
-  border-top: 1px solid #eeedf3;
+  border-top: 1px solid var(--color-divider);
   font-size: 18px;
 }
 .expense-bottom .money {
@@ -440,8 +476,8 @@ nav a.active {
   font-weight: 600;
   padding: 6px 14px;
   border-radius: 9px;
-  background: #fff4dd;
-  color: #855609;
+  background: var(--color-warning-surface);
+  color: var(--color-warning-text);
 }
 .badge.settled {
   color: var(--color-teal);
@@ -483,10 +519,10 @@ select {
 .field > input,
 .field select {
   width: 100%;
-  border: 1px solid #dcd9e6;
+  border: 1px solid var(--color-border-control);
   border-radius: 15px;
   padding: 20px 21px;
-  background: white;
+  background: var(--color-surface);
 }
 .create-account-card {
   width: 100%;
@@ -502,13 +538,13 @@ select {
   overflow-wrap: anywhere;
 }
 .create-account-card input[aria-invalid='true'] {
-  border-color: #a53232;
+  border-color: var(--color-danger);
 }
 .amount-input {
   display: flex;
   align-items: center;
   gap: 15px;
-  border: 1px solid #dcd9e6;
+  border: 1px solid var(--color-border-control);
   border-radius: 15px;
   padding: 18px 21px;
 }
@@ -561,13 +597,13 @@ select {
   align-items: center;
   gap: 18px;
   padding: 18px;
-  border: 1px solid var(--color-neutral-200);
+  border: 1px solid var(--color-border-control);
   border-radius: 15px;
   cursor: pointer;
 }
 .participant-option:has(input:checked) {
-  background: #faf5ff;
-  border-color: #d2b3ff;
+  background: var(--color-purple-wash);
+  border-color: var(--color-purple-line-strong);
 }
 .participant-option input {
   width: 27px;
@@ -638,6 +674,13 @@ select {
   margin-top: 0;
   padding-top: 0;
 }
+/* Conserva el tamaño que la cifra tenía como <h2>, ahora que el encabezado es
+   la etiqueta y no el número. */
+.aside-figure {
+  font-size: 1.74rem;
+  font-weight: 650;
+  letter-spacing: -0.025em;
+}
 .form-note {
   text-align: center;
   color: var(--color-neutral-500);
@@ -662,6 +705,9 @@ select {
 .back-link {
   font-size: 18px;
   align-self: start;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
 }
 .participants-table {
   width: 100%;
@@ -729,9 +775,9 @@ select {
   justify-content: space-between;
   gap: 27px;
   padding: 30px;
-  background: #fff0ef;
-  color: #922e32;
-  border: 1px solid #f3cfce;
+  background: var(--color-danger-surface);
+  color: var(--color-danger-text);
+  border: 1px solid var(--color-danger-line);
   border-radius: 18px;
   font-size: 20px;
   overflow-wrap: anywhere;
@@ -740,7 +786,7 @@ select {
   margin-top: 8px;
 }
 .invalid {
-  color: #a53232;
+  color: var(--color-danger);
 }
 .loading {
   display: flex;
@@ -754,9 +800,23 @@ select {
 .spinner {
   width: 27px;
   height: 27px;
-  border: 2px solid #dcc6ff;
+  border: 2px solid var(--color-purple-ring);
   border-top-color: var(--color-purple);
   border-radius: 50%;
+  animation: spin 720ms linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+/* Sin movimiento el anillo se queda quieto: el texto «Cargando tu
+   información…» ya dice lo que el giro decía. */
+@media (prefers-reduced-motion: reduce) {
+  .spinner,
+  .hero-balance .balance-placeholder {
+    animation: none;
+  }
 }
 .success-card {
   text-align: center;
@@ -799,7 +859,7 @@ select {
   position: fixed;
   top: -105px;
   padding: 15px;
-  background: white;
+  background: var(--color-surface);
   z-index: 10;
 }
 .skip-link:focus {
@@ -817,11 +877,37 @@ select {
   .dashboard-grid {
     grid-template-columns: 1fr;
   }
+  nav {
+    width: 100%;
+    order: 3;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  nav a {
+    flex: 1;
+    text-align: center;
+    padding: 15px 12px;
+    font-size: 18px;
+  }
+  .overview-grid,
+  .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 30px;
+  }
   .app-footer {
     margin: 0 36px;
   }
 }
-@media (max-width: 1050px) {
+/* Nivel teléfono: nav a pleno ancho, tabla como tarjetas, movimiento en dos columnas. */
+@media (max-width: 640px) {
+  nav {
+    flex-wrap: wrap;
+  }
+  nav a {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 15px 10px;
+  }
   .header-inner {
     padding: 24px 30px 15px;
     gap: 27px 18px;
@@ -842,18 +928,6 @@ select {
     font-size: 18px;
     padding-right: 12px;
   }
-  nav {
-    width: 100%;
-    order: 3;
-    justify-content: space-between;
-    gap: 12px;
-  }
-  nav a {
-    flex: 1;
-    text-align: center;
-    padding: 15px 12px;
-    font-size: 18px;
-  }
   .shell {
     padding: 42px 30px 60px;
     gap: 30px;
@@ -868,11 +942,6 @@ select {
   }
   .currency-pill {
     display: none;
-  }
-  .overview-grid,
-  .form-grid {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 30px;
   }
   .card {
     padding: 33px 30px;
@@ -985,7 +1054,7 @@ select {
 }
 .simulation-notice {
   background: var(--color-purple-soft);
-  border: 1px solid #eadbff;
+  border: 1px solid var(--color-purple-line-soft);
   border-radius: var(--radius-lg);
   padding: 30px;
 }
@@ -1029,7 +1098,8 @@ select {
     gap: 30px;
   }
 }
-@media (max-width: 1050px) {
+/* Nivel teléfono: acceso y sesión en una columna. */
+@media (max-width: 640px) {
   .auth-shell {
     padding: 42px 30px 66px;
   }
@@ -1121,7 +1191,7 @@ select {
    blanca. */
 .credit-map {
   position: relative;
-  background: radial-gradient(ellipse 75% 60% at 50% 45%, #1b1535 0%, #0a0a14 70%);
+  background: radial-gradient(ellipse 75% 60% at 50% 45%, var(--credit-sky-core) 0%, var(--credit-sky-edge) 70%);
   border-radius: var(--radius-lg);
   overflow: hidden;
 }
@@ -1139,7 +1209,7 @@ select {
   display: flex;
   gap: var(--space-4);
   font-size: var(--text-sm);
-  color: #c9c7d8;
+  color: var(--credit-sky-text);
 }
 .credit-legend span {
   display: flex;
@@ -1157,9 +1227,21 @@ select {
 }
 .credit-slider input {
   width: 100%;
+  /* El riel nativo deja un objetivo de ~20px de alto. 44px es el mínimo para
+     usarlo con el pulgar, y el relleno vertical lo consigue sin engordar el
+     riel: el pulgar crece, la línea no. */
+  min-height: 44px;
   margin: 0;
   accent-color: var(--credit-teal);
   cursor: pointer;
+}
+.credit-slider input::-webkit-slider-thumb {
+  height: 26px;
+  width: 26px;
+}
+.credit-slider input::-moz-range-thumb {
+  height: 26px;
+  width: 26px;
 }
 .credit-slider div {
   margin-top: var(--space-2);
@@ -1248,7 +1330,8 @@ select {
   }
 }
 
-@media (max-width: 1050px) {
+/* Nivel teléfono: lectura de la ruta apilada. */
+@media (max-width: 640px) {
   .credit-rows > div {
     gap: var(--space-1) var(--space-3);
   }
@@ -1270,8 +1353,14 @@ select {
 /* --- Inicio: hero y franja de constancia -------------------------------- */
 
 .hero {
-  background-image: linear-gradient(118deg, #6a00e6 0%, #7c01ff 38%, #9440ff 72%, #a45cff 100%);
-  color: #ffffff;
+  background-image: linear-gradient(
+    118deg,
+    var(--color-purple-deep) 0%,
+    var(--color-purple-mid) 38%,
+    var(--color-purple) 72%,
+    var(--color-purple-bright) 100%
+  );
+  color: var(--color-surface);
   border-radius: var(--radius-lg);
   padding: var(--space-8) var(--space-8) var(--space-12);
   display: grid;
@@ -1287,7 +1376,7 @@ select {
 }
 .hero > div > p:not(.eyebrow) {
   margin: var(--space-3) 0 0;
-  color: rgba(255, 255, 255, 0.82);
+  color: var(--color-on-purple-soft);
 }
 .hero-balance {
   display: flex;
@@ -1298,16 +1387,45 @@ select {
 }
 .hero-balance > span {
   font-size: var(--text-sm);
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--color-on-purple-soft);
 }
 .hero-balance .balance {
   font-size: clamp(2.7rem, 6vw, 4.5rem);
   font-weight: 700;
   letter-spacing: -2px;
 }
+/* El saldo es el elemento más alto de la página y llegaba con los datos: el
+   hero se dibujaba corto y después crecía. La línea se reserva con su propio
+   alto para que el salto no exista. */
+.hero-balance .balance,
+.hero-balance .balance-placeholder {
+  min-height: calc(clamp(2.7rem, 6vw, 4.5rem) * 1.35);
+  display: flex;
+  align-items: center;
+}
+.hero-balance .balance-placeholder {
+  width: 9ch;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0.14) 30%,
+    rgba(255, 255, 255, 0.26) 50%,
+    rgba(255, 255, 255, 0.14) 70%
+  );
+  background-size: 300% 100%;
+  animation: sheen 1.4s ease-in-out infinite;
+}
+@keyframes sheen {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
 .hero-balance .button.light {
   margin-top: var(--space-4);
-  background: #ffffff;
+  background: var(--color-surface);
   color: var(--color-purple);
 }
 
@@ -1389,7 +1507,8 @@ select {
     border-top: 1px solid var(--color-neutral-200);
   }
 }
-@media (max-width: 1050px) {
+/* Nivel teléfono: franja de constancia en una sola columna. */
+@media (max-width: 640px) {
   .streak {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1410,17 +1529,17 @@ select {
   margin-right: -18px;
   padding-right: 18px;
   scrollbar-width: thin;
-  scrollbar-color: #b4b5c3 transparent;
+  scrollbar-color: var(--color-scrollbar-thumb) transparent;
 }
 .scroll-area::-webkit-scrollbar {
   width: 8px;
 }
 .scroll-area::-webkit-scrollbar-track {
-  background: #f1f2f6;
+  background: var(--color-scrollbar-track);
   border-radius: var(--radius-full);
 }
 .scroll-area::-webkit-scrollbar-thumb {
-  background: #b4b5c3;
+  background: var(--color-scrollbar-thumb);
   border-radius: var(--radius-full);
 }
 .scroll-area:focus-visible {
@@ -1441,8 +1560,10 @@ select {
 }
 .button.ghost {
   background: transparent;
-  color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.6);
+  color: var(--color-surface);
+  /* El borde era el único indicio del control y se quedaba en 2,31:1 sobre la
+     cola del degradado. WCAG 1.4.11 pide 3:1. */
+  border-color: var(--color-on-purple-line);
 }
 .button.ghost:hover {
   background: rgba(255, 255, 255, 0.12);
@@ -1458,7 +1579,7 @@ select {
   font-weight: 600;
   padding: 16px 12px;
   border-radius: 17px;
-  border: 1px solid var(--color-neutral-200);
+  border: 1px solid var(--color-border-control);
   background: var(--color-surface);
   color: var(--color-neutral-900);
   cursor: pointer;

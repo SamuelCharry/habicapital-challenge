@@ -34,7 +34,11 @@ export default function Dashboard() {
         </div>
         <div className="hero-balance">
           <span>Saldo disponible · @{active!.handle}</span>
-          {data && <Money className="balance" amount={data.balance.balance_minor} />}
+          {data ? (
+            <Money className="balance" amount={data.balance.balance_minor} />
+          ) : (
+            <span className="balance-placeholder" aria-hidden="true" />
+          )}
           <div className="hero-actions">
             <Link className="button ghost" to="/recargar">
               Recargar
@@ -57,7 +61,7 @@ export default function Dashboard() {
               <Card>
                 <div className="section-heading">
                   <h2>Actividad reciente</h2>
-                  <Link to="/history">Ver todo →</Link>
+                  <Link to="/history">Ver todo <span aria-hidden="true">→</span></Link>
                 </div>
                 <div className="scroll-area" tabIndex={0} role="region" aria-label="Actividad reciente">
                   <MovementList movements={data.history} />
@@ -73,7 +77,7 @@ export default function Dashboard() {
                 {!data.expenses.length ? (
                   <EmptyState title="Un plan, varias personas">
                     <p>Crea tu primer gasto y lleva las cuentas de lo que comparten.</p>
-                    <Link to="/expenses/new">Crear un gasto →</Link>
+                    <Link to="/expenses/new">Crear un gasto <span aria-hidden="true">→</span></Link>
                   </EmptyState>
                 ) : (
                   <div className="scroll-area" tabIndex={0} role="region" aria-label="Gastos compartidos">

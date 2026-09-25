@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CreditPath } from '../api/types';
 import { BRAND_CORAL, BRAND_PURPLE, houseSilhouette, isDotParticle } from './creditMapShape';
 
@@ -26,6 +26,14 @@ const T = {
   pathDraws: 3.5,
   pathDrawn: 4.4,
 };
+
+/** Cuándo el mapa queda quieto. El titileo y la deriva se apagan durante los
+ *  0,8 s anteriores, así que el último fotograma es igual al anterior y el
+ *  bucle puede parar sin salto visible. Antes no paraba nunca: seguía
+ *  redibujando 3.500 partículas por fotograma mientras la página estuviera
+ *  abierta, y con movimiento reducido repintaba la misma imagen para siempre. */
+const CALM_STARTS = 4.4;
+const SETTLES_AT = 5.2;
 
 /** Cada cuántos pasos de la ruta hay una estrella de la constelación. */
 const STAR_EVERY = 6;
@@ -72,10 +80,18 @@ export function CreditMap({ path, position }: { path: CreditPath; position: numb
   const startedAt = useRef(performance.now());
   const particlesRef = useRef<Particle[]>([]);
 
-  const reducedMotion = useMemo(
+  // Se leía una sola vez al montar, así que cambiar la preferencia del sistema
+  // no tenía efecto hasta recargar. Ahora escucha el cambio.
+  const [reducedMotion, setReducedMotion] = useState(
     () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
-    [],
   );
+  useEffect(() => {
+    const query = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+    if (!query) return;
+    const sync = () => setReducedMotion(query.matches);
+    query.addEventListener('change', sync);
+    return () => query.removeEventListener('change', sync);
+  }, []);
 
   /** El encuadre sale de los datos, pero por percentiles y no por el mínimo y
    *  el máximo absolutos: con esos, un solo perfil extremo encoge todo lo
@@ -149,9 +165,10 @@ export function CreditMap({ path, position }: { path: CreditPath; position: numb
     const canvas = canvasRef.current;
     if (!canvas) return;
     let frame = 0;
+    const context = canvas.getContext('2d');
+    if (!context) return;
 
-    const draw = (now: number) => {
-      frame = requestAnimationFrame(draw);
+    const render = (elapsed: number, seconds: number) => {
       const ratio = window.devicePixelRatio || 1;
       const width = canvas.clientWidth;
       const height = canvas.clientHeight;
@@ -160,14 +177,11 @@ export function CreditMap({ path, position }: { path: CreditPath; position: numb
         canvas.width = Math.round(width * ratio);
         canvas.height = Math.round(height * ratio);
       }
-      const context = canvas.getContext('2d');
-      if (!context) return;
       context.setTransform(ratio, 0, 0, ratio, 0, 0);
       context.clearRect(0, 0, width, height);
 
-      // Siete segundos de animación no pueden ser obligatorios.
-      const elapsed = reducedMotion ? 99 : (now - startedAt.current) / 1000;
-      const seconds = now / 1000;
+      // El titileo y la deriva se apagan antes del reposo.
+      const calm = 1 - between(elapsed, CALM_STARTS, SETTLES_AT);
 
       const inset = Math.min(width, height) * 0.05;
       const dataScale = (Math.min(width, height) - inset * 2) / (extent.halfSpan * 2);
@@ -209,12 +223,13 @@ export function CreditMap({ path, position }: { path: CreditPath; position: numb
         x += particle.swirl * bulge * houseScale;
         y += Math.sin(particle.phase) * bulge * houseScale * 0.3;
 
-        const drift = settled * Math.sin(seconds * breathe + particle.phase);
+        const drift = calm * settled * Math.sin(seconds * breathe + particle.phase);
         const logoAlpha = isLogoDot(particle) ? 1 : 0.85;
         const base =
           (0.25 + 0.75 * forming) * (particle.dataAlpha + (logoAlpha - particle.dataAlpha) * (1 - settled));
         // Una vez asentadas, las estrellas titilan un poco.
-        const twinkle = 1 - settled * 0.15 * (0.5 + 0.5 * Math.sin(seconds * 1.7 + particle.phase * 5));
+        const twinkle =
+          1 - calm * settled * 0.15 * (0.5 + 0.5 * Math.sin(seconds * 1.7 + particle.phase * 5));
         const alpha = base * twinkle;
 
         context.globalAlpha = Math.min(1, alpha);
@@ -262,7 +277,7 @@ export function CreditMap({ path, position }: { path: CreditPath; position: numb
         stars.forEach(([x, y], index) => {
           const lit = clamp01((reach - index) * 3 + 1);
           if (lit <= 0) return;
-          context.globalAlpha = lit * (0.8 + 0.2 * Math.sin(seconds * 2 + index));
+          context.globalAlpha = lit * (1 - calm * 0.2 * (0.5 - 0.5 * Math.sin(seconds * 2 + index)));
           context.beginPath();
           context.arc(x, y, index === stars.length - 1 ? 5.5 : 4, 0, Math.PI * 2);
           context.fill();
@@ -301,8 +316,35 @@ export function CreditMap({ path, position }: { path: CreditPath; position: numb
       context.globalAlpha = 1;
     };
 
-    frame = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(frame);
+    const elapsedAt = (now: number) =>
+      reducedMotion ? SETTLES_AT : (now - startedAt.current) / 1000;
+
+    const tick = (now: number) => {
+      render(elapsedAt(now), now / 1000);
+      // Con movimiento reducido se dibuja un solo fotograma; si no, se dibuja
+      // hasta el reposo y después el mapa se queda quieto.
+      if (elapsedAt(now) < SETTLES_AT) frame = requestAnimationFrame(tick);
+      else frame = 0;
+    };
+
+    frame = requestAnimationFrame(tick);
+
+    // El bucle ya no está corriendo para recoger un cambio de tamaño, así que
+    // hay que repintar explícitamente.
+    const repaint = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(now => {
+        frame = 0;
+        render(elapsedAt(now), now / 1000);
+      });
+    };
+    const observer = new ResizeObserver(repaint);
+    observer.observe(canvas);
+
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
   }, [path, position, extent, reducedMotion]);
 
   return (
